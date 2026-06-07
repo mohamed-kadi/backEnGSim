@@ -1,0 +1,36 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Maven
+target/
+backend/target/
+order-service/target/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS generated files
+.DS_Store
+
+# Metals
+.metals/
+
+# Environment variables (Crucial for security!)
+.env
+*.env.local
