@@ -1,0 +1,77 @@
+name: Backend Engineering Lab CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: labuser
+          POSTGRES_PASSWORD: labpassword
+          POSTGRES_DB: backendlab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build and run standard tests
+        run: mvn -B test --file pom.xml
+
+      - name: Start background application for Load Tests
+        run: |
+          mvn spring-boot:start -Dspring-boot.run.profiles=ci &
+          # Wait for the application to be ready
+          timeout 60 bash -c 'while ! curl -s http://localhost:8080/actuator/health | grep -q "UP"; do sleep 1; done'
+
+      - name: Run Contract Validation Suite
+        run: mvn -B test -Dtest=ContractTestSuite --file pom.xml
+
+      - name: Run Baseline Load Test (Normal State)
+        run: |
+          echo "Running a quick 10-second baseline load test..."
+          # We override the 5m duration to 10s for the CI environment
+          docker run --rm --network host -i grafana/k6 run -e BASE_URL=http://localhost:8080/api/users --vus 5 --duration 10s - < ../load-test.js
+
+      - name: Run Chaos Load Test (API Latency)
+        run: |
+          echo "Activating 02-api-latency scenario..."
+          curl -s -X POST http://localhost:8080/api/_system/scenario/activate/02-api-latency
+
+          echo "Running load test under chaos conditions (Thresholds are expected to fail)..."
+          docker run --rm --network host -i grafana/k6 run -e BASE_URL=http://localhost:8080/api/users --vus 5 --duration 10s - < ../load-test.js || echo "Load test failed as expected due to chaos injection!"
+
+          echo "Resetting system to normal..."
+          curl -s -X POST http://localhost:8080/api/_system/scenario/reset
