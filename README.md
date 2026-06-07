@@ -1,0 +1,113 @@
+# Backend Engineering Lab
+
+Backend Engineering Lab is a production-debugging and system-design training platform. It gives learners a realistic Spring Boot microservice environment where they can trigger failures, inspect behavior, and practice explaining incidents with senior backend engineering language.
+
+## Overview
+
+This application uses **Spring Boot**, **PostgreSQL**, **Redis**, **Kafka**, **Prometheus**, **Grafana**, **k6**, and a React dashboard. It includes a built-in `ScenarioEngine` that can dynamically inject faults without redeploying code.
+
+The goal is not only to see failures. The goal is to learn how to reason about them:
+
+- What failed?
+- Which system boundary is involved?
+- What evidence should a backend engineer collect?
+- Which terms should be used in an incident report or design review?
+- What remediation would a senior engineer propose?
+
+### Architecture Overview
+
+The core of the fault injection relies on **Spring AOP (Aspect-Oriented Programming)**. 
+1. The **ScenarioEngine** maintains the state of the active incident in memory.
+2. **FaultInjectionAspect** listens to specific method executions (like Controller endpoints or Repository calls).
+3. If an aspect detects that its corresponding scenario is active, it intercepts the call to mutate the response, add latency, or throw exceptions.
+4. The **ScenarioCatalog** documents each scenario and exposes it to the dashboard through `/api/_system/scenario/catalog`.
+
+### Services
+
+- `backend`: main Spring Boot service with the User API, scenario engine, Kafka producer/consumer, and fault injection.
+- `order-service`: secondary Spring Boot service used to teach cross-service calls and saga-style failures.
+- `frontend`: React dashboard used to activate incidents and study the learning notes.
+- `docker-compose.yml`: local infrastructure for PostgreSQL, Redis, Kafka, Prometheus, and Grafana.
+
+## Learning Material
+
+Start with these files:
+
+- [TUTORIALS.md](TUTORIALS.md): guided scenario walkthroughs.
+- [docs/LEARNING_PATH.md](docs/LEARNING_PATH.md): recommended path from beginner to advanced topics.
+- [docs/SCENARIO_CATALOG.md](docs/SCENARIO_CATALOG.md): full incident catalog and investigation prompts.
+- [docs/GLOSSARY.md](docs/GLOSSARY.md): senior backend, DDD, SRE, and system-design vocabulary.
+
+## Prerequisites
+
+- Java 17
+- Maven
+- Docker
+- Node.js 18+ for the React dashboard
+
+## Getting Started
+
+### 1. Environment Setup
+
+Copy the example environment variables file and update it if necessary:
+
+```bash
+cp .env.example .env
+```
+
+### 2. Start Infrastructure
+
+Start PostgreSQL, Redis, Kafka, Prometheus, and Grafana:
+
+```bash
+docker-compose up -d
+```
+
+### 3. Run the Backend
+
+Run the main backend:
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+Run the order service in a second terminal:
+
+```bash
+cd order-service
+mvn spring-boot:run
+```
+
+Run the dashboard in a third terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Default local URLs:
+
+- Backend API: `http://localhost:8080`
+- Order service: `http://localhost:8081`
+- Dashboard: `http://localhost:5173`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+### 4. Verify
+
+```bash
+mvn test
+cd frontend
+npm run build
+```
+
+## Fault Injection API
+
+The platform exposes endpoints to trigger incident scenarios dynamically:
+
+- `POST /api/_system/scenario/activate/{id}`: Activates a specific failure scenario (e.g., `01-dto-regression`).
+- `POST /api/_system/scenario/reset`: Returns the application to a normal state.
+- `GET /api/_system/scenario/status`: Checks the current scenario status.
+- `GET /api/_system/scenario/catalog`: Returns the documented training catalog used by the dashboard.
