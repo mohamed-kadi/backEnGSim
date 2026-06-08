@@ -41,9 +41,11 @@ The **Report History** panel lists saved learner notes by scenario, completion s
 
 Learners can export each active scenario as a Markdown incident report from the runbook, including their notes, affected components, evidence prompts, senior diagnosis, remediation, and checklist.
 
-The dashboard is organized as a workspace with sidebar views for Overview, Scenarios, Runbook, Reports, and System tools, plus a right-side inspector for the active scenario and quick actions.
+The dashboard is organized as a workspace with sidebar views for Scenarios, Runbook, System, Reports, and Progress, plus a right-side inspector for the active scenario and quick actions.
 
 The inspector carries the latest system events across views, so learners can move between scenario selection, runbooks, reports, and system evidence without losing investigation context.
+
+The full system map lives in the System view. Other views keep compact context through scenario component hints and inspector dependency alerts, which avoids repeating the same health panel on every tab.
 
 ## Learning Material
 

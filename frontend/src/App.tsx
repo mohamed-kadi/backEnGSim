@@ -217,7 +217,6 @@ management.endpoints.web.exposure.include=health,prometheus
             {activeView === 'overview' && (
               <>
                 <LearningProgressPanel scenarios={scenarioCatalog} notes={learningNotes} />
-                <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
                 <PipelineVisualizer activeScenario={activeScenario} />
               </>
             )}
@@ -281,16 +280,47 @@ const WindowHeader = ({ title }: { title: string }) => (
   </div>
 );
 
-const ScenarioButton = ({ icon, title, eyebrow, onClick, isActive }: { icon: string, title: string, eyebrow?: string, onClick: () => void, isActive?: boolean }) => {
+const ScenarioButton = ({
+  icon,
+  title,
+  eyebrow,
+  chips = [],
+  onClick,
+  isActive,
+}: {
+  icon: string,
+  title: string,
+  eyebrow?: string,
+  chips?: string[],
+  onClick: () => void,
+  isActive?: boolean,
+}) => {
+  const visibleChips = chips.slice(0, 4);
+  const hiddenChipCount = chips.length - visibleChips.length;
+
   return (
     <button 
       onClick={onClick} 
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all duration-200 shadow-sm text-left ${isActive ? 'bg-red-900/40 border-red-500/50 text-red-100 ring-1 ring-red-500/50' : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-slate-500 text-slate-300'}`}
+      className={`flex min-h-24 items-start gap-3 rounded-lg border px-4 py-3 text-left shadow-sm transition-all duration-200 ${isActive ? 'bg-red-900/40 border-red-500/50 text-red-100 ring-1 ring-red-500/50' : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-slate-500 text-slate-300'}`}
     >
-      <span className="text-xl">{icon}</span>
-      <span>
+      <span className="shrink-0 text-xl">{icon}</span>
+      <span className="min-w-0 flex-1">
         {eyebrow && <span className="block text-[11px] uppercase tracking-widest text-slate-500">{eyebrow}</span>}
-        <span className="font-medium text-sm">{title}</span>
+        <span className="block text-sm font-medium leading-snug">{title}</span>
+        {visibleChips.length > 0 && (
+          <span className="mt-2 flex flex-wrap gap-1">
+            {visibleChips.map((chip) => (
+              <span key={chip} className="rounded border border-slate-600 bg-slate-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-slate-400">
+                {chip}
+              </span>
+            ))}
+            {hiddenChipCount > 0 && (
+              <span className="rounded border border-slate-600 bg-slate-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-slate-400">
+                +{hiddenChipCount}
+              </span>
+            )}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -375,6 +405,7 @@ const WorkspaceInspector = ({
 }) => {
   const note = activeScenarioId ? learningNotes.find((item) => item.scenarioId === activeScenarioId) : null;
   const unhealthyDependencies = dependencies.filter((dependency) => dependency.status !== 'UP');
+  const healthyDependencyCount = dependencies.filter((dependency) => dependency.status === 'UP').length;
   const latestEvents = logs.slice(-5).reverse();
 
   return (
@@ -430,8 +461,13 @@ const WorkspaceInspector = ({
 
         <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Dependency Alerts</p>
+          <p className="mt-3 text-sm text-slate-300">
+            {dependencies.length === 0 ? 'Dependency probes unavailable.' : `${healthyDependencyCount}/${dependencies.length} probed dependencies healthy.`}
+          </p>
           <div className="mt-3 space-y-2">
-            {unhealthyDependencies.length === 0 ? (
+            {dependencies.length === 0 ? (
+              <p className="text-sm text-slate-500">Open the System view after the backend finishes starting.</p>
+            ) : unhealthyDependencies.length === 0 ? (
               <p className="text-sm text-emerald-300">All probed dependencies are healthy.</p>
             ) : (
               unhealthyDependencies.map((dependency) => (
@@ -476,6 +512,7 @@ const ScenarioCatalogPanel = ({
             icon={scenarioIcons[scenario.id] || '⚙️'}
             title={scenario.title}
             eyebrow={`${scenario.category} · ${scenario.difficulty}`}
+            chips={scenario.affectedComponents}
             onClick={() => onTriggerScenario(scenario.id)}
             isActive={activeScenario === scenario.id}
           />

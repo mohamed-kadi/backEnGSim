@@ -129,6 +129,9 @@ Tasks:
 - [x] Add latest events to the inspector so learners do not need duplicate terminals.
 - [x] Add direct Runbook to System evidence navigation.
 - [x] Fix dependency status badge overflow inside system map cards.
+- [x] Keep the full system map only in the System view.
+- [x] Add affected-component hints to scenario cards.
+- [x] Keep compact dependency health in the global inspector.
 
 Recommended commit:
 
@@ -196,6 +199,8 @@ Use `./scripts/verify.sh` for broader verification when Docker Desktop is runnin
 - `c4351e4` - export incident reports
 - `3ee7768` - validate learning notes
 - `c5de821` - add report history view
+- `5cd639a` - organize dashboard workspace
+- `7570376` - improve investigation workspace flow
 
 ## Working Rules
 
