@@ -434,6 +434,67 @@ Remediation:
 Terms to use: ${scenario.concepts.join(', ')}`;
 };
 
+const buildIncidentReport = (scenario: ScenarioDefinition, notes: string, completed: boolean) => {
+  const evidence = getRunbookEvidence(scenario);
+  return `# Incident Report: ${scenario.title}
+
+Generated: ${new Date().toISOString()}
+Scenario ID: ${scenario.id}
+Category: ${scenario.category}
+Difficulty: ${scenario.difficulty}
+Status: ${completed ? 'Completed' : 'In progress'}
+
+## Trigger
+
+${scenario.trigger}
+
+## What Broke
+
+${scenario.failureMode}
+
+## Affected Components
+
+${scenario.affectedComponents.map((component) => `- ${component}`).join('\n')}
+
+## Evidence To Collect
+
+${evidence.map((item) => `- ${item}`).join('\n')}
+
+## Learner Diagnosis
+
+${notes.trim() || '_No learner notes recorded yet._'}
+
+## Senior Diagnosis
+
+${scenario.seniorDiagnosis}
+
+## Recommended Remediation
+
+${scenario.remediation}
+
+## Concepts
+
+${scenario.concepts.map((concept) => `- ${concept}`).join('\n')}
+
+## Investigation Checklist
+
+${scenario.investigationSteps.map((step) => `- [ ] ${step}`).join('\n')}
+`;
+};
+
+const downloadIncidentReport = (scenario: ScenarioDefinition, notes: string, completed: boolean) => {
+  const report = buildIncidentReport(scenario, notes, completed);
+  const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${scenario.id}-incident-report.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 const formatUpdatedAt = (updatedAt: string | null) => {
   if (!updatedAt) return 'not saved';
   return new Intl.DateTimeFormat(undefined, {
@@ -696,6 +757,13 @@ const LearningRunbookPanel = ({ scenario, onProgressChanged }: { scenario: Scena
               {syncState === 'saving' ? 'Saving...' : syncState === 'offline' ? 'Saved locally; backend unavailable' : 'Saved to learning notes'}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => downloadIncidentReport(scenario, notes, completed)}
+            className="mt-4 w-full rounded-lg border border-blue-700/60 bg-blue-950/40 px-4 py-3 text-sm font-semibold text-blue-100 transition-colors hover:bg-blue-900/50"
+          >
+            Export Incident Report
+          </button>
         </RunbookSection>
       </div>
     </div>

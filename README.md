@@ -37,6 +37,8 @@ Learner notes and scenario completion state are persisted through the backend le
 
 The dashboard also includes a **Learning Progress** panel that summarizes completed scenarios, remaining scenarios, and coverage by failure category.
 
+Learners can export each active scenario as a Markdown incident report from the runbook, including their notes, affected components, evidence prompts, senior diagnosis, remediation, and checklist.
+
 ## Learning Material
 
 Start with these files:
