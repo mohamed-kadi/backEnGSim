@@ -153,12 +153,12 @@ if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
 fi
 
 if ! ensure_url_ready_or_port_free "backend" 8080 "http://127.0.0.1:8080/actuator/health"; then
-  start_process "backend" "$ROOT_DIR/backend" mvn spring-boot:run
+  start_process "backend" "$ROOT_DIR/backend" env DEBUG=false mvn spring-boot:run -Dspring-boot.run.profiles=dev
 fi
 wait_for_url "backend" "http://127.0.0.1:8080/actuator/health" 120
 
 if ! ensure_url_ready_or_port_free "order-service" 8081 "http://127.0.0.1:8081/actuator/health"; then
-  start_process "order-service" "$ROOT_DIR/order-service" mvn spring-boot:run
+  start_process "order-service" "$ROOT_DIR/order-service" env DEBUG=false mvn spring-boot:run -Dspring-boot.run.profiles=dev
 fi
 wait_for_url "order-service" "http://127.0.0.1:8081/actuator/health" 90
 

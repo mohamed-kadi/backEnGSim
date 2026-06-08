@@ -88,14 +88,14 @@ Run the main backend:
 
 ```bash
 cd backend
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Run the order service in a second terminal:
 
 ```bash
 cd order-service
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Run the dashboard in a third terminal:
@@ -122,6 +122,11 @@ If the dashboard shows a blank or stale page, stop the lab and start it again:
 ```
 
 If startup still reports a port conflict, stop the process shown by the script or change the conflicting local service before rerunning `dev-up.sh`.
+
+### Spring Profiles
+
+- `dev`: local learning environment. Uses Docker-backed PostgreSQL, Redis, Kafka, and the local order service.
+- `test`: automated test environment. Uses in-memory H2 for backend persistence, disables Kafka listener startup, shortens Kafka producer timeouts, and reduces framework log noise.
 
 ### 4. Verify
 

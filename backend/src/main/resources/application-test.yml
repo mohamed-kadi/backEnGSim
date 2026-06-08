@@ -1,0 +1,52 @@
+spring:
+  main:
+    banner-mode: off
+  datasource:
+    url: jdbc:h2:mem:backendlab-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 16379
+  kafka:
+    bootstrap-servers: 127.0.0.1:19092
+    listener:
+      auto-startup: false
+    producer:
+      retries: 0
+      properties:
+        request.timeout.ms: 250
+        delivery.timeout.ms: 750
+        max.block.ms: 250
+
+app:
+  order-service:
+    url: http://127.0.0.1:18081/api/orders
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: WARN
+    com.backendlab: INFO
+    org.apache.catalina.core.ContainerBase: OFF
+    org.apache.kafka: ERROR
+    org.springframework.kafka: ERROR
+    org.springframework.kafka.support.LoggingProducerListener: OFF
+    org.springframework.test.context: WARN
+    org.springframework.boot.test.context: WARN
+    org.hibernate.SQL: WARN

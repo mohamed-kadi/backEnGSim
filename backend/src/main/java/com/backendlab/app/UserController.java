@@ -54,7 +54,11 @@ public class UserController {
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
         User savedUser = userRepository.save(user);
-        kafkaTemplate.send("user-events", "UserCreated: " + savedUser.getUsername());
+        try {
+            kafkaTemplate.send("user-events", "UserCreated: " + savedUser.getUsername());
+        } catch (RuntimeException ex) {
+            logger.log("[KAFKA PRODUCER] User event publication failed: " + ex.getMessage());
+        }
         
         // Make distributed network call to the secondary microservice
         try {

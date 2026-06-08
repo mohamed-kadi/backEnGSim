@@ -1,12 +1,9 @@
 spring:
-  application:
-    name: Backend Engineering Lab
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:backendlab}
     username: ${POSTGRES_USER:labuser}
     password: ${POSTGRES_PASSWORD:labpassword}
   jpa:
-    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
@@ -16,32 +13,14 @@ spring:
       port: ${REDIS_PORT:6379}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      group-id: backendlab-group
-      auto-offset-reset: earliest
 
 app:
   order-service:
     url: ${ORDER_SERVICE_URL:http://localhost:8081/api/orders}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    prometheus:
-      enabled: true
-  metrics:
-    distribution:
-      percentiles-histogram:
-        http:
-          server:
-            requests: true
-
 logging:
   level:
-    root: INFO
+    com.backendlab: INFO
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
     org.hibernate.SQL: WARN
