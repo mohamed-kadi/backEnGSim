@@ -51,6 +51,8 @@ Scenario catalog cards show whether each lab is new, started, or completed, so l
 
 The System view also includes dependency drills for PostgreSQL, Redis, Kafka, and HTTP/order-service boundaries. Each drill explains what to inspect and which backend vocabulary to use when writing an incident diagnosis.
 
+For latency, downstream, cache-stampede, write-failure, and rate-limit scenarios, the runbook adds resilience exercises about timeout budgets, retry safety, exponential backoff, and load shedding. Exported incident reports include those prompts.
+
 ## Learning Material
 
 Start with these files:

@@ -958,8 +958,55 @@ Remediation:
 Terms to use: ${scenario.concepts.join(', ')}`;
 };
 
+const resilienceExercises = [
+  {
+    id: 'latency-timeout-budget',
+    title: 'Timeout Budget Drill',
+    scenarioIds: ['02-api-latency', '08-saga-failure'],
+    focus: 'Protect callers from slow downstream work.',
+    decision: 'Where should the timeout live: client, API, downstream client, or all three?',
+    prompts: [
+      'Name the user-visible symptom if no timeout exists.',
+      'Choose a timeout shorter than the caller expectation and explain the tradeoff.',
+      'Decide whether the request should fail fast, degrade gracefully, or move async.',
+    ],
+    vocabulary: ['timeout budget', 'tail latency', 'bulkhead', 'graceful degradation'],
+  },
+  {
+    id: 'retry-classification',
+    title: 'Retry Classification Drill',
+    scenarioIds: ['03-db-connection', '05-write-failure', '08-saga-failure'],
+    focus: 'Separate retryable failures from unsafe repeats.',
+    decision: 'Is this operation safe to retry automatically?',
+    prompts: [
+      'Classify the failure as transient, permanent, or unknown.',
+      'Explain whether the command is idempotent.',
+      'Define the maximum retry count and what happens after retries are exhausted.',
+    ],
+    vocabulary: ['idempotency', 'transient fault', 'retry budget', 'dead letter'],
+  },
+  {
+    id: 'backoff-load-shedding',
+    title: 'Backoff & Load-Shedding Drill',
+    scenarioIds: ['04-cache-stampede', '09-rate-limiting'],
+    focus: 'Avoid making an overloaded system worse.',
+    decision: 'Should clients retry, slow down, or stop sending traffic?',
+    prompts: [
+      'Decide whether immediate retries amplify the incident.',
+      'Write the Retry-After or exponential backoff behavior you expect clients to follow.',
+      'Name the metric that should track rejected traffic separately from 5xx failures.',
+    ],
+    vocabulary: ['exponential backoff', 'jitter', 'load shedding', '429'],
+  },
+];
+
+const getScenarioResilienceExercises = (scenario: ScenarioDefinition) => (
+  resilienceExercises.filter((exercise) => exercise.scenarioIds.includes(scenario.id))
+);
+
 const buildIncidentReport = (scenario: ScenarioDefinition, notes: string, completed: boolean) => {
   const evidence = getRunbookEvidence(scenario);
+  const exercises = getScenarioResilienceExercises(scenario);
   return `# Incident Report: ${scenario.title}
 
 Generated: ${new Date().toISOString()}
@@ -995,6 +1042,14 @@ ${scenario.seniorDiagnosis}
 ## Recommended Remediation
 
 ${scenario.remediation}
+
+## Resilience Exercises
+
+${exercises.length === 0 ? '_No resilience exercise mapped to this scenario._' : exercises.map((exercise) => `### ${exercise.title}
+
+- Focus: ${exercise.focus}
+- Decision: ${exercise.decision}
+${exercise.prompts.map((prompt) => `- ${prompt}`).join('\n')}`).join('\n\n')}
 
 ## Concepts
 
@@ -1210,6 +1265,7 @@ const LearningRunbookPanel = ({ scenario, onProgressChanged, onOpenSystem }: { s
 
   const evidence = getRunbookEvidence(scenario);
   const summaryPrompt = getRunbookSummaryPrompt(scenario);
+  const exercises = getScenarioResilienceExercises(scenario);
 
   return (
     <div className="bg-slate-900 p-6 rounded-xl border border-blue-800/60 shadow-lg mt-8">
@@ -1301,9 +1357,49 @@ const LearningRunbookPanel = ({ scenario, onProgressChanged, onOpenSystem }: { s
           </button>
         </RunbookSection>
       </div>
+
+      {exercises.length > 0 && (
+        <ResilienceExercisesPanel exercises={exercises} />
+      )}
     </div>
   );
 };
+
+const ResilienceExercisesPanel = ({ exercises }: { exercises: typeof resilienceExercises }) => (
+  <div className="mt-4 rounded-lg border border-amber-800/50 bg-amber-950/10 p-4">
+    <div className="mb-4 border-b border-amber-900/40 pb-3">
+      <h4 className="text-xs font-bold uppercase tracking-widest text-amber-300">Rate Limit & Retry Exercises</h4>
+      <p className="mt-1 text-sm text-slate-400">Use these prompts to decide whether resilience behavior protects the system or amplifies the failure.</p>
+    </div>
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+      {exercises.map((exercise) => (
+        <article key={exercise.id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+          <h5 className="text-sm font-semibold text-slate-100">{exercise.title}</h5>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">{exercise.focus}</p>
+          <div className="mt-3 rounded border border-amber-800/40 bg-amber-950/20 p-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Decision</p>
+            <p className="mt-1 text-sm text-slate-200">{exercise.decision}</p>
+          </div>
+          <ol className="mt-3 space-y-2 text-sm text-slate-300">
+            {exercise.prompts.map((prompt, index) => (
+              <li key={prompt} className="flex gap-2">
+                <span className="font-mono text-slate-500">{index + 1}.</span>
+                <span>{prompt}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {exercise.vocabulary.map((term) => (
+              <span key={term} className="rounded border border-amber-800/40 bg-amber-950/20 px-2 py-1 text-[11px] font-semibold text-amber-100">
+                {term}
+              </span>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+);
 
 const readLocalLearningNote = (storageKey: string, scenarioId: string): LearningNote => {
   const raw = localStorage.getItem(storageKey);
