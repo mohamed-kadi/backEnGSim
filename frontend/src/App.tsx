@@ -226,6 +226,8 @@ management.endpoints.web.exposure.include=health,prometheus
 
         <LearningPanel scenario={activeScenarioDetails} />
 
+        <LearningRunbookPanel scenario={activeScenarioDetails} />
+
         <button 
           onClick={resetSystem} 
           className="w-full mt-4 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.01] border border-emerald-500/50 tracking-wide"
@@ -321,6 +323,31 @@ const StatusPill = ({ status }: { status: string }) => {
   return <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${className}`}>{status}</span>;
 };
 
+const runbookEvidenceByComponent: Record<string, string[]> = {
+  client: ['Compare expected response contracts with the current API payload.', 'Capture the exact request, response status, and response body.'],
+  aop: ['Check which fault injection scenario is active.', 'Map the injected behavior to the intercepted controller or repository method.'],
+  api: ['Review backend logs around the failing request.', 'Check whether the failure is synchronous, asynchronous, transient, or deterministic.'],
+  postgres: ['Inspect repository behavior and transaction boundaries.', 'Decide whether the symptom is connection exhaustion, write failure, or schema/data drift.'],
+  redis: ['Look for cache timeout symptoms and backend fallback behavior.', 'Decide whether the cache is accelerating reads or becoming a dependency bottleneck.'],
+  kafka: ['Check producer and consumer logs separately.', 'Describe whether the issue affects command handling, event publication, or downstream processing.'],
+  order: ['Call the order service health endpoint.', 'Decide whether the backend should fail closed, retry, compensate, or continue best-effort.'],
+};
+
+const getRunbookEvidence = (scenario: ScenarioDefinition) => {
+  const evidence = scenario.affectedComponents.flatMap((component) => runbookEvidenceByComponent[component] || []);
+  return Array.from(new Set(evidence));
+};
+
+const getRunbookSummaryPrompt = (scenario: ScenarioDefinition) => {
+  return `Incident: ${scenario.title}
+Failed boundary:
+Evidence:
+User impact:
+Root cause hypothesis:
+Remediation:
+Terms to use: ${scenario.concepts.join(', ')}`;
+};
+
 const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null }) => {
   const [progress, setProgress] = useState(0);
 
@@ -394,6 +421,124 @@ const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null 
     </div>
   );
 };
+
+const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | null }) => {
+  const [notes, setNotes] = useState('');
+  const storageKey = scenario ? `backendlab.runbook.${scenario.id}` : null;
+
+  useEffect(() => {
+    if (!storageKey) {
+      setNotes('');
+      return;
+    }
+    setNotes(localStorage.getItem(storageKey) || '');
+  }, [storageKey]);
+
+  const saveNotes = (value: string) => {
+    setNotes(value);
+    if (storageKey) {
+      localStorage.setItem(storageKey, value);
+    }
+  };
+
+  if (!scenario) {
+    return (
+      <div className="bg-slate-900 p-6 rounded-xl border border-slate-700 shadow-lg mt-8">
+        <div className="mb-4 border-b border-slate-800 pb-3">
+          <h3 className="text-lg font-bold text-slate-200">Guided Incident Runbook</h3>
+          <p className="text-sm text-slate-400 mt-1">Activate a scenario to get an investigation path, vocabulary prompts, and a notes workspace.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <RunbookStep label="1" title="Trigger" body="Start with one scenario so the failure has a clear boundary." />
+          <RunbookStep label="2" title="Observe" body="Read logs, dependency health, and the system map before guessing." />
+          <RunbookStep label="3" title="Explain" body="Write a short diagnosis using backend and system-design vocabulary." />
+        </div>
+      </div>
+    );
+  }
+
+  const evidence = getRunbookEvidence(scenario);
+  const summaryPrompt = getRunbookSummaryPrompt(scenario);
+
+  return (
+    <div className="bg-slate-900 p-6 rounded-xl border border-blue-800/60 shadow-lg mt-8">
+      <div className="mb-5 border-b border-slate-800 pb-3">
+        <h3 className="text-lg font-bold text-blue-300">Guided Incident Runbook</h3>
+        <p className="text-sm text-slate-400 mt-1">Use this flow while the scenario is active. The goal is to build an evidence-based diagnosis, not just click the reset button.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <RunbookSection title="What Broke">
+          <p className="text-sm leading-relaxed text-slate-300">{scenario.failureMode}</p>
+          <div className="mt-3 rounded border border-red-900/40 bg-red-950/20 p-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-red-300">Failed Boundary</p>
+            <p className="mt-1 text-sm text-slate-200">{scenario.affectedComponents.join(' / ')}</p>
+          </div>
+        </RunbookSection>
+
+        <RunbookSection title="Where To Look">
+          <ol className="space-y-2 text-sm text-slate-300">
+            {evidence.map((item, index) => (
+              <li key={item} className="flex gap-3">
+                <span className="text-slate-500 font-mono">{index + 1}.</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ol>
+        </RunbookSection>
+
+        <RunbookSection title="Vocabulary">
+          <div className="flex flex-wrap gap-2">
+            {scenario.concepts.map((concept) => (
+              <span key={concept} className="rounded border border-blue-700/50 bg-blue-950/30 px-2 py-1 text-xs text-blue-100">{concept}</span>
+            ))}
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-slate-400">{scenario.seniorDiagnosis}</p>
+        </RunbookSection>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        <RunbookSection title="Investigation Checklist">
+          <ol className="space-y-2 text-sm text-slate-300">
+            {scenario.investigationSteps.map((step, index) => (
+              <li key={step} className="flex gap-3">
+                <input type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-950 accent-blue-500" aria-label={`Complete step ${index + 1}`} />
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </RunbookSection>
+
+        <RunbookSection title="Learner Notes">
+          <textarea
+            value={notes}
+            onChange={(event) => saveNotes(event.target.value)}
+            placeholder={summaryPrompt}
+            className="min-h-64 w-full resize-y rounded border border-slate-700 bg-slate-950 p-3 font-mono text-sm leading-relaxed text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="mt-2 text-xs text-slate-500">Saved locally in this browser for {scenario.id}.</p>
+        </RunbookSection>
+      </div>
+    </div>
+  );
+};
+
+const RunbookSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
+  <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">{title}</h4>
+    {children}
+  </section>
+);
+
+const RunbookStep = ({ label, title, body }: { label: string, title: string, body: string }) => (
+  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+    <div className="flex items-center gap-3">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-xs font-bold text-blue-300">{label}</span>
+      <h4 className="font-semibold text-slate-200">{title}</h4>
+    </div>
+    <p className="mt-3 text-slate-400 leading-relaxed">{body}</p>
+  </div>
+);
 
 const TopologyDiagram = ({ activeScenario }: { activeScenario: string }) => {
   const getStatus = (node: string) => {

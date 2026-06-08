@@ -31,6 +31,8 @@ The core of the fault injection relies on **Spring AOP (Aspect-Oriented Programm
 
 The dashboard includes a **System Map & Dependency Health** panel. It shows the live status of PostgreSQL, Redis, Kafka, and the order service, then highlights the components affected by the active scenario.
 
+It also includes a **Guided Incident Runbook**. When a scenario is active, the dashboard shows what broke, where to collect evidence, which senior backend terms apply, and a local notes workspace for writing an incident diagnosis.
+
 ## Learning Material
 
 Start with these files:
