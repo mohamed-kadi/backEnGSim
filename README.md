@@ -35,6 +35,8 @@ It also includes a **Guided Incident Runbook**. When a scenario is active, the d
 
 Learner notes and scenario completion state are persisted through the backend learning API, with browser-local fallback when the backend is unavailable.
 
+The dashboard also includes a **Learning Progress** panel that summarizes completed scenarios, remaining scenarios, and coverage by failure category.
+
 ## Learning Material
 
 Start with these files:

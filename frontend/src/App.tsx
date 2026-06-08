@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 type ScenarioDefinition = {
@@ -54,6 +54,7 @@ export default function App() {
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioCatalog, setScenarioCatalog] = useState<ScenarioDefinition[]>([]);
   const [dependencies, setDependencies] = useState<DependencyStatus[]>([]);
+  const [learningNotes, setLearningNotes] = useState<LearningNote[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : '';
@@ -112,18 +113,30 @@ management.endpoints.web.exposure.include=health,prometheus
     }
   };
 
+  const fetchLearningNotes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/_learning/notes');
+      const data = await readJson(res);
+      setLearningNotes(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to fetch learning progress", e);
+      setLearningNotes([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchCatalog();
     fetchStatus();
     fetchLogs();
     fetchDependencies();
+    fetchLearningNotes();
     const interval = setInterval(() => {
       fetchStatus();
       fetchLogs();
       fetchDependencies();
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchLearningNotes]);
 
   useEffect(() => {
     // Only scroll the internal terminal container (not the whole page), and only when a NEW log arrives
@@ -169,6 +182,8 @@ management.endpoints.web.exposure.include=health,prometheus
       </div>
 
       <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
+
+      <LearningProgressPanel scenarios={scenarioCatalog} notes={learningNotes} />
 
       <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
         <div className="mb-4 border-b border-slate-700 pb-2">
@@ -233,7 +248,7 @@ management.endpoints.web.exposure.include=health,prometheus
 
         <LearningPanel scenario={activeScenarioDetails} />
 
-        <LearningRunbookPanel scenario={activeScenarioDetails} />
+        <LearningRunbookPanel scenario={activeScenarioDetails} onProgressChanged={fetchLearningNotes} />
 
         <button 
           onClick={resetSystem} 
@@ -330,6 +345,70 @@ const StatusPill = ({ status }: { status: string }) => {
   return <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${className}`}>{status}</span>;
 };
 
+const LearningProgressPanel = ({ scenarios, notes }: { scenarios: ScenarioDefinition[], notes: LearningNote[] }) => {
+  const completedIds = new Set(notes.filter((note) => note.completed).map((note) => note.scenarioId));
+  const completedCount = scenarios.filter((scenario) => completedIds.has(scenario.id)).length;
+  const totalCount = scenarios.length;
+  const percentComplete = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  const latestNote = notes
+    .filter((note) => note.updatedAt)
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
+  const categories = Array.from(new Set(scenarios.map((scenario) => scenario.category))).sort();
+
+  return (
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg mb-8">
+      <div className="mb-4 border-b border-slate-700 pb-2">
+        <h3 className="text-lg font-semibold text-slate-300">Learning Progress</h3>
+        <p className="text-sm text-slate-400 mt-1">Track completed incidents and coverage across backend failure categories.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+        <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Completion</p>
+              <p className="mt-2 text-4xl font-bold text-emerald-300">{percentComplete}%</p>
+            </div>
+            <p className="text-sm text-slate-400">{completedCount}/{totalCount} scenarios</p>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-950 border border-slate-700">
+            <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${percentComplete}%` }} />
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            {latestNote ? `Last updated: ${formatUpdatedAt(latestNote.updatedAt)}` : 'No saved learning notes yet.'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {categories.map((category) => {
+            const categoryScenarios = scenarios.filter((scenario) => scenario.category === category);
+            const completedInCategory = categoryScenarios.filter((scenario) => completedIds.has(scenario.id)).length;
+            return (
+              <div key={category} className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-semibold text-slate-200">{category}</h4>
+                  <span className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-400">{completedInCategory}/{categoryScenarios.length}</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {categoryScenarios.map((scenario) => {
+                    const isComplete = completedIds.has(scenario.id);
+                    return (
+                      <div key={scenario.id} className="flex items-center gap-2 text-xs">
+                        <span className={`h-2.5 w-2.5 rounded-full ${isComplete ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                        <span className={isComplete ? 'text-slate-300' : 'text-slate-500'}>{scenario.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const runbookEvidenceByComponent: Record<string, string[]> = {
   client: ['Compare expected response contracts with the current API payload.', 'Capture the exact request, response status, and response body.'],
   aop: ['Check which fault injection scenario is active.', 'Map the injected behavior to the intercepted controller or repository method.'],
@@ -353,6 +432,16 @@ User impact:
 Root cause hypothesis:
 Remediation:
 Terms to use: ${scenario.concepts.join(', ')}`;
+};
+
+const formatUpdatedAt = (updatedAt: string | null) => {
+  if (!updatedAt) return 'not saved';
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(updatedAt));
 };
 
 const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null }) => {
@@ -429,7 +518,7 @@ const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null 
   );
 };
 
-const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | null }) => {
+const LearningRunbookPanel = ({ scenario, onProgressChanged }: { scenario: ScenarioDefinition | null, onProgressChanged: () => void }) => {
   const [notes, setNotes] = useState('');
   const [completed, setCompleted] = useState(false);
   const [syncState, setSyncState] = useState<'idle' | 'saving' | 'saved' | 'offline'>('idle');
@@ -503,6 +592,7 @@ const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | nul
         .then((data: LearningNote) => {
           writeLocalLearningNote(storageKey, data);
           setSyncState('saved');
+          onProgressChanged();
         })
         .catch((error) => {
           console.error('Failed to save learning notes', error);
@@ -511,7 +601,7 @@ const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | nul
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [notes, completed, scenario, storageKey, noteReady]);
+  }, [notes, completed, scenario, storageKey, noteReady, onProgressChanged]);
 
   const saveNotes = (value: string) => {
     setNotes(value);
