@@ -29,6 +29,8 @@ The core of the fault injection relies on **Spring AOP (Aspect-Oriented Programm
 - `frontend`: React dashboard used to activate incidents and study the learning notes.
 - `docker-compose.yml`: local infrastructure for PostgreSQL, Redis, Kafka, Prometheus, and Grafana.
 
+The dashboard includes a **System Map & Dependency Health** panel. It shows the live status of PostgreSQL, Redis, Kafka, and the order service, then highlights the components affected by the active scenario.
+
 ## Learning Material
 
 Start with these files:
@@ -126,3 +128,4 @@ The platform exposes endpoints to trigger incident scenarios dynamically:
 - `POST /api/_system/scenario/reset`: Returns the application to a normal state.
 - `GET /api/_system/scenario/status`: Checks the current scenario status.
 - `GET /api/_system/scenario/catalog`: Returns the documented training catalog used by the dashboard.
+- `GET /api/_system/dependencies`: Returns live dependency status for the system map.

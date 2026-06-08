@@ -13,7 +13,7 @@ For every scenario, follow the same learning loop:
 1. Run the system in normal mode and capture the baseline.
 2. Activate the incident from the dashboard or API.
 3. Trigger the affected endpoint.
-4. Read the logs, HTTP response, and dashboard learning panel.
+4. Read the logs, HTTP response, system map, and dashboard learning panel.
 5. Explain the failure using the senior diagnosis.
 6. Propose a remediation and write down the tradeoff.
 

@@ -16,6 +16,14 @@ type ScenarioDefinition = {
   investigationSteps: string[];
 };
 
+type DependencyStatus = {
+  id: string;
+  name: string;
+  role: string;
+  status: 'UP' | 'DOWN' | 'DEGRADED' | string;
+  detail: string;
+};
+
 const scenarioIcons: Record<string, string> = {
   '01-dto-regression': '💣',
   '02-api-latency': '🐌',
@@ -31,6 +39,7 @@ const scenarioIcons: Record<string, string> = {
 export default function App() {
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioCatalog, setScenarioCatalog] = useState<ScenarioDefinition[]>([]);
+  const [dependencies, setDependencies] = useState<DependencyStatus[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : '';
@@ -75,13 +84,25 @@ management.endpoints.web.exposure.include=health,prometheus
     }
   };
 
+  const fetchDependencies = async () => {
+    try {
+      const res = await fetch('/api/_system/dependencies');
+      const data = await res.json();
+      setDependencies(data);
+    } catch (e) {
+      console.error("Failed to fetch dependency health", e);
+    }
+  };
+
   useEffect(() => {
     fetchCatalog();
     fetchStatus();
     fetchLogs();
+    fetchDependencies();
     const interval = setInterval(() => {
       fetchStatus();
       fetchLogs();
+      fetchDependencies();
     }, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -128,6 +149,8 @@ management.endpoints.web.exposure.include=health,prometheus
           )}
         </h2>
       </div>
+
+      <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
 
       <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
         <div className="mb-4 border-b border-slate-700 pb-2">
@@ -220,6 +243,65 @@ const ScenarioButton = ({ icon, title, eyebrow, onClick, isActive }: { icon: str
       </span>
     </button>
   );
+};
+
+const componentNodes = [
+  { id: 'client', name: 'Client / k6', role: 'Traffic source and API consumer', icon: '💻' },
+  { id: 'aop', name: 'Chaos Aspect', role: 'Runtime fault injection boundary', icon: '🛡️' },
+  { id: 'api', name: 'Backend API', role: 'User API and scenario engine', icon: '⚙️' },
+  { id: 'postgres', name: 'PostgreSQL', role: 'Transactional persistence', icon: '🗄️' },
+  { id: 'redis', name: 'Redis', role: 'Cache boundary', icon: '⚡' },
+  { id: 'kafka', name: 'Kafka', role: 'Async event backbone', icon: '📨' },
+  { id: 'order', name: 'Order Service', role: 'Secondary service / saga boundary', icon: '📦' },
+];
+
+const SystemMapPanel = ({ dependencies, affectedComponents }: { dependencies: DependencyStatus[], affectedComponents: string[] }) => {
+  const statusById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
+
+  return (
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg mb-8">
+      <div className="mb-4 border-b border-slate-700 pb-2">
+        <h3 className="text-lg font-semibold text-slate-300">System Map & Dependency Health</h3>
+        <p className="text-sm text-slate-400 mt-1">Use this map to connect each failure to the service boundary it stresses.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {componentNodes.map((node) => {
+          const health = statusById.get(node.id);
+          const isAffected = affectedComponents.includes(node.id);
+          const status = health?.status || (node.id === 'client' || node.id === 'aop' ? 'LOCAL' : 'UNKNOWN');
+          return (
+            <div
+              key={node.id}
+              className={`min-h-32 rounded-lg border p-4 transition-colors ${isAffected ? 'border-red-500 bg-red-950/40' : 'border-slate-700 bg-slate-900/60'}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{node.icon}</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200">{node.name}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{node.role}</p>
+                  </div>
+                </div>
+                <StatusPill status={status} />
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-400">{health?.detail || (isAffected ? 'Affected by active scenario' : 'No live probe required')}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const StatusPill = ({ status }: { status: string }) => {
+  const normalized = status.toUpperCase();
+  const className =
+    normalized === 'UP' ? 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300' :
+    normalized === 'DOWN' ? 'border-red-500/50 bg-red-950/60 text-red-300' :
+    normalized === 'DEGRADED' ? 'border-yellow-500/50 bg-yellow-950/60 text-yellow-300' :
+    'border-slate-600 bg-slate-800 text-slate-400';
+
+  return <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${className}`}>{status}</span>;
 };
 
 const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null }) => {

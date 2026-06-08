@@ -22,6 +22,8 @@ Tradeoff:
 
 Keep the writing concise. Senior communication is specific, evidence-backed, and honest about uncertainty.
 
+For every exercise, also look at the dashboard system map. Name the component under stress before writing the incident note.
+
 ## 1. API Contract Regression
 
 Scenario: `01-dto-regression`
