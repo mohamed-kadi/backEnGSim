@@ -46,11 +46,11 @@ const scenarioIcons: Record<string, string> = {
 };
 
 const workspaceViews: { id: WorkspaceView, label: string }[] = [
-  { id: 'overview', label: 'Overview' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'runbook', label: 'Runbook' },
-  { id: 'reports', label: 'Reports' },
   { id: 'system', label: 'System' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'overview', label: 'Progress' },
 ];
 
 const readJson = async (res: Response) => {
@@ -61,7 +61,7 @@ const readJson = async (res: Response) => {
 };
 
 export default function App() {
-  const [activeView, setActiveView] = useState<WorkspaceView>('overview');
+  const [activeView, setActiveView] = useState<WorkspaceView>('scenarios');
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioCatalog, setScenarioCatalog] = useState<ScenarioDefinition[]>([]);
   const [dependencies, setDependencies] = useState<DependencyStatus[]>([]);
@@ -227,7 +227,11 @@ management.endpoints.web.exposure.include=health,prometheus
             {activeView === 'runbook' && (
               <>
                 <LearningPanel scenario={activeScenarioDetails} />
-                <LearningRunbookPanel scenario={activeScenarioDetails} onProgressChanged={fetchLearningNotes} />
+                <LearningRunbookPanel
+                  scenario={activeScenarioDetails}
+                  onProgressChanged={fetchLearningNotes}
+                  onOpenSystem={() => setActiveView('system')}
+                />
               </>
             )}
 
@@ -255,9 +259,11 @@ management.endpoints.web.exposure.include=health,prometheus
           activeScenarioId={activeScenario}
           dependencies={dependencies}
           learningNotes={learningNotes}
+          logs={logs}
           onResetSystem={resetSystem}
           onOpenRunbook={() => setActiveView('runbook')}
           onOpenReports={() => setActiveView('reports')}
+          onOpenSystem={() => setActiveView('system')}
         />
       </div>
     </div>
@@ -308,18 +314,35 @@ const WorkspaceSidebar = ({ activeView, onViewChange }: { activeView: WorkspaceV
         </button>
       ))}
     </nav>
+    <div className="mt-5 hidden rounded-lg border border-slate-800 bg-slate-900/60 p-3 lg:block">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Learner Flow</p>
+      <ol className="mt-3 space-y-2 text-xs text-slate-400">
+        <li>1. Trigger a scenario</li>
+        <li>2. Read the runbook</li>
+        <li>3. Inspect system evidence</li>
+        <li>4. Save/export diagnosis</li>
+      </ol>
+    </div>
   </aside>
 );
 
 const WorkspaceHeader = ({ activeScenario, activeView }: { activeScenario: string | null, activeView: WorkspaceView }) => {
   const viewLabel = workspaceViews.find((view) => view.id === activeView)?.label || 'Overview';
+  const viewHint: Record<WorkspaceView, string> = {
+    scenarios: 'Choose a failure to investigate.',
+    runbook: 'Explain the failure with evidence.',
+    system: 'Inspect logs, configuration, dependencies, and runtime signals.',
+    reports: 'Review saved learner work and export reports.',
+    overview: 'Track completion and category coverage.',
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/95 px-4 py-4 backdrop-blur md:px-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Workspace</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Investigation Workspace</p>
           <h2 className="mt-1 text-2xl font-bold text-slate-100">{viewLabel}</h2>
+          <p className="mt-1 text-sm text-slate-500">{viewHint[activeView]}</p>
         </div>
         <div className={`rounded-lg border px-4 py-2 text-sm font-bold ${activeScenario ? 'border-red-700 bg-red-950/40 text-red-200' : 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'}`}>
           {activeScenario ? `Incident active: ${activeScenario}` : 'System normal'}
@@ -334,20 +357,25 @@ const WorkspaceInspector = ({
   activeScenarioId,
   dependencies,
   learningNotes,
+  logs,
   onResetSystem,
   onOpenRunbook,
   onOpenReports,
+  onOpenSystem,
 }: {
   activeScenario: ScenarioDefinition | null,
   activeScenarioId: string | null,
   dependencies: DependencyStatus[],
   learningNotes: LearningNote[],
+  logs: string[],
   onResetSystem: () => void,
   onOpenRunbook: () => void,
   onOpenReports: () => void,
+  onOpenSystem: () => void,
 }) => {
   const note = activeScenarioId ? learningNotes.find((item) => item.scenarioId === activeScenarioId) : null;
   const unhealthyDependencies = dependencies.filter((dependency) => dependency.status !== 'UP');
+  const latestEvents = logs.slice(-5).reverse();
 
   return (
     <aside className="border-t border-slate-800 bg-slate-950 p-4 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-t-0">
@@ -373,6 +401,7 @@ const WorkspaceInspector = ({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Quick Actions</p>
           <div className="mt-3 grid gap-2">
             <button type="button" onClick={onOpenRunbook} className="rounded-lg border border-blue-700/60 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 hover:bg-blue-900/40">Open Runbook</button>
+            <button type="button" onClick={onOpenSystem} className="rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-900/40">Open System Logs</button>
             <button type="button" onClick={onOpenReports} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700">Open Reports</button>
             <button type="button" onClick={onResetSystem} className="rounded-lg border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-900/40">Reset System</button>
           </div>
@@ -382,6 +411,21 @@ const WorkspaceInspector = ({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Learning State</p>
           <p className="mt-3 text-sm text-slate-300">{note?.completed ? 'Current scenario completed' : activeScenario ? 'Current scenario in progress' : 'Choose a scenario to begin'}</p>
           {note?.updatedAt && <p className="mt-1 text-xs text-slate-500">Updated {formatUpdatedAt(note.updatedAt)}</p>}
+        </section>
+
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Latest Events</p>
+          <div className="mt-3 space-y-2">
+            {latestEvents.length === 0 ? (
+              <p className="text-sm text-slate-500">No events yet.</p>
+            ) : (
+              latestEvents.map((log, index) => (
+                <p key={`${index}-${log}`} className={`rounded border border-slate-800 bg-slate-950/70 p-2 font-mono text-[11px] leading-relaxed ${log.includes('FAULT INJECTED') ? 'text-red-300' : log.includes('SCENARIO ENGINE') ? 'text-cyan-300' : 'text-slate-400'}`}>
+                  {log}
+                </p>
+              ))
+            )}
+          </div>
         </section>
 
         <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
@@ -505,10 +549,10 @@ const SystemMapPanel = ({ dependencies, affectedComponents }: { dependencies: De
               key={node.id}
               className={`min-h-32 rounded-lg border p-4 transition-colors ${isAffected ? 'border-red-500 bg-red-950/40' : 'border-slate-700 bg-slate-900/60'}`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{node.icon}</span>
-                  <div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                <div className="min-w-0 flex items-center gap-3">
+                  <span className="shrink-0 text-xl">{node.icon}</span>
+                  <div className="min-w-0">
                     <h4 className="text-sm font-semibold text-slate-200">{node.name}</h4>
                     <p className="text-xs text-slate-500 mt-0.5">{node.role}</p>
                   </div>
@@ -532,7 +576,14 @@ const StatusPill = ({ status }: { status: string }) => {
     normalized === 'DEGRADED' ? 'border-yellow-500/50 bg-yellow-950/60 text-yellow-300' :
     'border-slate-600 bg-slate-800 text-slate-400';
 
-  return <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${className}`}>{status}</span>;
+  return (
+    <span
+      title={status}
+      className={`inline-flex max-w-20 shrink-0 items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-normal ${className}`}
+    >
+      {status}
+    </span>
+  );
 };
 
 const LearningProgressPanel = ({ scenarios, notes }: { scenarios: ScenarioDefinition[], notes: LearningNote[] }) => {
@@ -861,7 +912,7 @@ const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null 
   );
 };
 
-const LearningRunbookPanel = ({ scenario, onProgressChanged }: { scenario: ScenarioDefinition | null, onProgressChanged: () => void }) => {
+const LearningRunbookPanel = ({ scenario, onProgressChanged, onOpenSystem }: { scenario: ScenarioDefinition | null, onProgressChanged: () => void, onOpenSystem: () => void }) => {
   const [notes, setNotes] = useState('');
   const [completed, setCompleted] = useState(false);
   const [syncState, setSyncState] = useState<'idle' | 'saving' | 'saved' | 'offline'>('idle');
@@ -972,8 +1023,19 @@ const LearningRunbookPanel = ({ scenario, onProgressChanged }: { scenario: Scena
   return (
     <div className="bg-slate-900 p-6 rounded-xl border border-blue-800/60 shadow-lg mt-8">
       <div className="mb-5 border-b border-slate-800 pb-3">
-        <h3 className="text-lg font-bold text-blue-300">Guided Incident Runbook</h3>
-        <p className="text-sm text-slate-400 mt-1">Use this flow while the scenario is active. The goal is to build an evidence-based diagnosis, not just click the reset button.</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-blue-300">Guided Incident Runbook</h3>
+            <p className="text-sm text-slate-400 mt-1">Use this flow while the scenario is active. The goal is to build an evidence-based diagnosis, not just click the reset button.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenSystem}
+            className="rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-3 py-2 text-sm font-semibold text-cyan-100 transition-colors hover:bg-cyan-900/40"
+          >
+            Inspect System Evidence
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

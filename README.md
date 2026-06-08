@@ -43,6 +43,8 @@ Learners can export each active scenario as a Markdown incident report from the 
 
 The dashboard is organized as a workspace with sidebar views for Overview, Scenarios, Runbook, Reports, and System tools, plus a right-side inspector for the active scenario and quick actions.
 
+The inspector carries the latest system events across views, so learners can move between scenario selection, runbooks, reports, and system evidence without losing investigation context.
+
 ## Learning Material
 
 Start with these files:

@@ -126,6 +126,9 @@ Tasks:
 - [x] Move long-scroll content into focused views.
 - [x] Keep active scenario status visible globally.
 - [x] Add right-side inspector for active scenario, dependency alerts, and quick actions.
+- [x] Add latest events to the inspector so learners do not need duplicate terminals.
+- [x] Add direct Runbook to System evidence navigation.
+- [x] Fix dependency status badge overflow inside system map cards.
 
 Recommended commit:
 
