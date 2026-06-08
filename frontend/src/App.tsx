@@ -163,6 +163,16 @@ management.endpoints.web.exposure.include=health,prometheus
     });
   };
 
+  const updateReportCompletion = async (scenarioId: string, completed: boolean) => {
+    const existing = learningNotes.find((note) => note.scenarioId === scenarioId);
+    await fetch(`/api/_learning/notes/${scenarioId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: existing?.notes || '', completed }),
+    });
+    fetchLearningNotes();
+  };
+
   return (
     <div className="min-h-screen p-8 max-w-6xl mx-auto font-sans">
       <header className="mb-8 border-b border-slate-700 pb-4">
@@ -184,6 +194,14 @@ management.endpoints.web.exposure.include=health,prometheus
       <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
 
       <LearningProgressPanel scenarios={scenarioCatalog} notes={learningNotes} />
+
+      <ReportHistoryPanel
+        scenarios={scenarioCatalog}
+        notes={learningNotes}
+        activeScenario={activeScenario}
+        onOpenScenario={triggerScenario}
+        onSetCompleted={updateReportCompletion}
+      />
 
       <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
         <div className="mb-4 border-b border-slate-700 pb-2">
@@ -405,6 +423,98 @@ const LearningProgressPanel = ({ scenarios, notes }: { scenarios: ScenarioDefini
           })}
         </div>
       </div>
+    </div>
+  );
+};
+
+const ReportHistoryPanel = ({
+  scenarios,
+  notes,
+  activeScenario,
+  onOpenScenario,
+  onSetCompleted,
+}: {
+  scenarios: ScenarioDefinition[],
+  notes: LearningNote[],
+  activeScenario: string | null,
+  onOpenScenario: (id: string) => void,
+  onSetCompleted: (id: string, completed: boolean) => void,
+}) => {
+  const notesByScenario = new Map(notes.map((note) => [note.scenarioId, note]));
+  const savedReports = scenarios
+    .map((scenario) => ({ scenario, note: notesByScenario.get(scenario.id) }))
+    .filter((entry): entry is { scenario: ScenarioDefinition, note: LearningNote } => Boolean(entry.note))
+    .sort((a, b) => String(b.note.updatedAt || '').localeCompare(String(a.note.updatedAt || '')));
+
+  return (
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg mb-8">
+      <div className="mb-4 border-b border-slate-700 pb-2">
+        <h3 className="text-lg font-semibold text-slate-300">Report History</h3>
+        <p className="text-sm text-slate-400 mt-1">Review saved learner work, reopen scenarios, and export reports without searching through the runbook.</p>
+      </div>
+
+      {savedReports.length === 0 ? (
+        <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-400">
+          Saved reports will appear here after you write notes or mark a scenario complete.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-700">
+          <div className="hidden grid-cols-[1fr_130px_140px_230px] gap-4 border-b border-slate-700 bg-slate-900 px-4 py-3 text-xs font-bold uppercase tracking-widest text-slate-500 lg:grid">
+            <span>Scenario</span>
+            <span>Status</span>
+            <span>Updated</span>
+            <span>Actions</span>
+          </div>
+          <div className="divide-y divide-slate-800">
+            {savedReports.map(({ scenario, note }) => (
+              <div key={scenario.id} className="grid grid-cols-1 gap-3 bg-slate-900/50 px-4 py-4 lg:grid-cols-[1fr_130px_140px_230px] lg:items-center lg:gap-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-semibold text-slate-200">{scenario.title}</h4>
+                    {activeScenario === scenario.id && (
+                      <span className="rounded border border-red-600/50 bg-red-950/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-200">Active</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{scenario.category} / {scenario.difficulty}</p>
+                  <p className="mt-2 line-clamp-2 text-sm text-slate-400">{note.notes || 'No written diagnosis yet.'}</p>
+                </div>
+
+                <div>
+                  <span className={`inline-flex rounded border px-2 py-1 text-xs font-semibold ${note.completed ? 'border-emerald-600/50 bg-emerald-950/40 text-emerald-300' : 'border-yellow-600/50 bg-yellow-950/30 text-yellow-300'}`}>
+                    {note.completed ? 'Completed' : 'In progress'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-400">{formatUpdatedAt(note.updatedAt)}</p>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenScenario(scenario.id)}
+                    className="rounded border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-700"
+                  >
+                    Open
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadIncidentReport(scenario, note.notes, note.completed)}
+                    className="rounded border border-blue-700/60 bg-blue-950/40 px-3 py-2 text-xs font-semibold text-blue-100 transition-colors hover:bg-blue-900/50"
+                  >
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSetCompleted(scenario.id, !note.completed)}
+                    className="rounded border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 text-xs font-semibold text-emerald-100 transition-colors hover:bg-emerald-900/50"
+                  >
+                    {note.completed ? 'Reopen' : 'Complete'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

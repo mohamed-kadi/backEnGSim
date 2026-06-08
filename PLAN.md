@@ -97,15 +97,15 @@ git commit -m "feat: validate learning notes"
 
 ### 2. Report History
 
-Status: planned
+Status: completed
 
 Goal: make saved learner work reviewable from the dashboard without needing to export immediately.
 
 Tasks:
 
-- [ ] Add a dashboard view listing saved notes by scenario.
-- [ ] Show completion state and last updated time.
-- [ ] Add quick actions: open scenario, export report, mark complete.
+- [x] Add a dashboard view listing saved notes by scenario.
+- [x] Show completion state and last updated time.
+- [x] Add quick actions: open scenario, export report, mark complete.
 
 Recommended commit:
 
@@ -171,6 +171,7 @@ Use `./scripts/verify.sh` for broader verification when Docker Desktop is runnin
 - `c01e66f` - persist learning notes
 - `77739e3` - add learning progress panel
 - `c4351e4` - export incident reports
+- `3ee7768` - validate learning notes
 
 ## Working Rules
 
