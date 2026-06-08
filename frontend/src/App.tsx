@@ -36,6 +36,13 @@ const scenarioIcons: Record<string, string> = {
   '09-rate-limiting': '🚦',
 };
 
+const readJson = async (res: Response) => {
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  return res.json();
+};
+
 export default function App() {
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioCatalog, setScenarioCatalog] = useState<ScenarioDefinition[]>([]);
@@ -56,41 +63,45 @@ management.endpoints.web.exposure.include=health,prometheus
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/_system/scenario/status');
-      const data = await res.json();
+      const data = await readJson(res);
       const scenario = data.activeScenario;
       setActiveScenario(scenario && scenario !== "none" ? scenario : null);
     } catch (e) {
       console.error("Failed to fetch status", e);
+      setActiveScenario(null);
     }
   };
 
   const fetchLogs = async () => {
     try {
       const res = await fetch('/api/_system/logs');
-      const data = await res.json();
-      setLogs(data);
+      const data = await readJson(res);
+      setLogs(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to fetch logs", e);
+      setLogs([]);
     }
   };
 
   const fetchCatalog = async () => {
     try {
       const res = await fetch('/api/_system/scenario/catalog');
-      const data = await res.json();
-      setScenarioCatalog(data);
+      const data = await readJson(res);
+      setScenarioCatalog(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to fetch scenario catalog", e);
+      setScenarioCatalog([]);
     }
   };
 
   const fetchDependencies = async () => {
     try {
       const res = await fetch('/api/_system/dependencies');
-      const data = await res.json();
-      setDependencies(data);
+      const data = await readJson(res);
+      setDependencies(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to fetch dependency health", e);
+      setDependencies([]);
     }
   };
 
@@ -158,16 +169,22 @@ management.endpoints.web.exposure.include=health,prometheus
           <p className="text-sm text-slate-400 mt-1">Each scenario teaches a production failure pattern, the senior-level diagnosis, and a concrete investigation path.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {scenarioCatalog.map((scenario) => (
-            <ScenarioButton
-              key={scenario.id}
-              icon={scenarioIcons[scenario.id] || '⚙️'}
-              title={scenario.title}
-              eyebrow={`${scenario.category} · ${scenario.difficulty}`}
-              onClick={() => triggerScenario(scenario.id)}
-              isActive={activeScenario === scenario.id}
-            />
-          ))}
+          {scenarioCatalog.length === 0 ? (
+            <div className="md:col-span-2 rounded-lg border border-yellow-600/40 bg-yellow-950/30 p-4 text-sm text-yellow-100">
+              Scenario catalog unavailable. Check that the backend is running at http://localhost:8080, then refresh the dashboard.
+            </div>
+          ) : (
+            scenarioCatalog.map((scenario) => (
+              <ScenarioButton
+                key={scenario.id}
+                icon={scenarioIcons[scenario.id] || '⚙️'}
+                title={scenario.title}
+                eyebrow={`${scenario.category} · ${scenario.difficulty}`}
+                onClick={() => triggerScenario(scenario.id)}
+                isActive={activeScenario === scenario.id}
+              />
+            ))
+          )}
 
           {/* Diagnostic Button */}
           <div className="col-span-1 md:col-span-2 border-t border-slate-700/50 my-2"></div>

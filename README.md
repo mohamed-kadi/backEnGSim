@@ -68,6 +68,8 @@ The fastest local startup is:
 
 This starts Docker infrastructure, the backend, the order service, and the React dashboard. Logs and process IDs are stored under `.lab/`.
 
+`dev-up.sh` keeps the dashboard pinned to `http://localhost:5173`. If another process is already using `5173`, `8080`, or `8081`, the script stops with the blocking PID instead of silently moving the dashboard to a different port.
+
 Stop everything with:
 
 ```bash
@@ -111,6 +113,15 @@ Default local URLs:
 - Dashboard: `http://localhost:5173`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
+
+If the dashboard shows a blank or stale page, stop the lab and start it again:
+
+```bash
+./scripts/dev-down.sh
+./scripts/dev-up.sh
+```
+
+If startup still reports a port conflict, stop the process shown by the script or change the conflicting local service before rerunning `dev-up.sh`.
 
 ### 4. Verify
 
