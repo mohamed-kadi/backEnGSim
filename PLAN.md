@@ -132,6 +132,7 @@ Tasks:
 - [x] Keep the full system map only in the System view.
 - [x] Add affected-component hints to scenario cards.
 - [x] Keep compact dependency health in the global inspector.
+- [x] Add scenario completion badges to scenario catalog buttons.
 
 Recommended commit:
 
@@ -162,7 +163,6 @@ git commit -m "feat: add ddd learning track"
 
 - [ ] Persist exported reports as first-class backend records.
 - [ ] Add report diffing between first diagnosis and final diagnosis.
-- [ ] Add scenario completion badges to scenario catalog buttons.
 - [ ] Add dependency-specific drills for PostgreSQL, Redis, Kafka, and HTTP clients.
 - [ ] Add rate-limiting and retry policy exercises.
 - [ ] Add OpenAPI contract-diff learning scenario.

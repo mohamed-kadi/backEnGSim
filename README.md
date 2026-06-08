@@ -47,6 +47,8 @@ The inspector carries the latest system events across views, so learners can mov
 
 The full system map lives in the System view. Other views keep compact context through scenario component hints and inspector dependency alerts, which avoids repeating the same health panel on every tab.
 
+Scenario catalog cards show whether each lab is new, started, or completed, so learners can choose the next exercise without switching to the progress view first.
+
 ## Learning Material
 
 Start with these files:

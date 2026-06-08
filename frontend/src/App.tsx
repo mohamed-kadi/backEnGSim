@@ -32,6 +32,7 @@ type LearningNote = {
 };
 
 type WorkspaceView = 'overview' | 'scenarios' | 'runbook' | 'reports' | 'system';
+type ScenarioProgressState = 'new' | 'started' | 'completed';
 
 const scenarioIcons: Record<string, string> = {
   '01-dto-regression': '💣',
@@ -192,6 +193,7 @@ management.endpoints.web.exposure.include=health,prometheus
   const scenarioCatalogPanel = (
     <ScenarioCatalogPanel
       scenarios={scenarioCatalog}
+      notes={learningNotes}
       activeScenario={activeScenario}
       onTriggerScenario={openScenarioRunbook}
       onGenerateTestUser={generateTestUser}
@@ -285,6 +287,7 @@ const ScenarioButton = ({
   title,
   eyebrow,
   chips = [],
+  progressState,
   onClick,
   isActive,
 }: {
@@ -292,11 +295,18 @@ const ScenarioButton = ({
   title: string,
   eyebrow?: string,
   chips?: string[],
+  progressState?: ScenarioProgressState,
   onClick: () => void,
   isActive?: boolean,
 }) => {
   const visibleChips = chips.slice(0, 4);
   const hiddenChipCount = chips.length - visibleChips.length;
+  const progressLabel = progressState === 'completed' ? 'Completed' : progressState === 'started' ? 'Started' : progressState === 'new' ? 'New' : '';
+  const progressClass =
+    progressState === 'completed' ? 'border-emerald-600/60 bg-emerald-950/50 text-emerald-200' :
+    progressState === 'started' ? 'border-yellow-600/60 bg-yellow-950/40 text-yellow-200' :
+    progressState === 'new' ? 'border-slate-600 bg-slate-900 text-slate-400' :
+    '';
 
   return (
     <button 
@@ -305,7 +315,14 @@ const ScenarioButton = ({
     >
       <span className="shrink-0 text-xl">{icon}</span>
       <span className="min-w-0 flex-1">
-        {eyebrow && <span className="block text-[11px] uppercase tracking-widest text-slate-500">{eyebrow}</span>}
+        <span className="flex items-start justify-between gap-2">
+          {eyebrow && <span className="min-w-0 text-[11px] uppercase tracking-widest text-slate-500">{eyebrow}</span>}
+          {progressLabel && (
+            <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-normal ${progressClass}`}>
+              {progressLabel}
+            </span>
+          )}
+        </span>
         <span className="block text-sm font-medium leading-snug">{title}</span>
         {visibleChips.length > 0 && (
           <span className="mt-2 flex flex-wrap gap-1">
@@ -486,44 +503,61 @@ const WorkspaceInspector = ({
 
 const ScenarioCatalogPanel = ({
   scenarios,
+  notes,
   activeScenario,
   onTriggerScenario,
   onGenerateTestUser,
 }: {
   scenarios: ScenarioDefinition[],
+  notes: LearningNote[],
   activeScenario: string | null,
   onTriggerScenario: (id: string) => void,
   onGenerateTestUser: () => void,
-}) => (
-  <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
-    <div className="mb-4 border-b border-slate-700 pb-2">
-      <h3 className="text-lg font-semibold text-slate-300">Scenario Catalog</h3>
-      <p className="text-sm text-slate-400 mt-1">Each scenario teaches a production failure pattern, the senior-level diagnosis, and a concrete investigation path.</p>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {scenarios.length === 0 ? (
-        <div className="md:col-span-2 rounded-lg border border-yellow-600/40 bg-yellow-950/30 p-4 text-sm text-yellow-100">
-          Scenario catalog unavailable. Check that the backend is running at http://localhost:8080, then refresh the dashboard.
-        </div>
-      ) : (
-        scenarios.map((scenario) => (
-          <ScenarioButton
-            key={scenario.id}
-            icon={scenarioIcons[scenario.id] || '⚙️'}
-            title={scenario.title}
-            eyebrow={`${scenario.category} · ${scenario.difficulty}`}
-            chips={scenario.affectedComponents}
-            onClick={() => onTriggerScenario(scenario.id)}
-            isActive={activeScenario === scenario.id}
-          />
-        ))
-      )}
+}) => {
+  const noteByScenario = new Map(notes.map((note) => [note.scenarioId, note]));
+  const getProgressState = (scenarioId: string): ScenarioProgressState => {
+    const note = noteByScenario.get(scenarioId);
+    if (note?.completed) {
+      return 'completed';
+    }
+    if (note?.updatedAt || note?.notes.trim()) {
+      return 'started';
+    }
+    return 'new';
+  };
 
-      <div className="col-span-1 md:col-span-2 border-t border-slate-700/50 my-2"></div>
-      <ScenarioButton icon="👤" title="Generate Test User (Kafka)" onClick={onGenerateTestUser} />
+  return (
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
+      <div className="mb-4 border-b border-slate-700 pb-2">
+        <h3 className="text-lg font-semibold text-slate-300">Scenario Catalog</h3>
+        <p className="text-sm text-slate-400 mt-1">Each scenario teaches a production failure pattern, the senior-level diagnosis, and a concrete investigation path.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {scenarios.length === 0 ? (
+          <div className="md:col-span-2 rounded-lg border border-yellow-600/40 bg-yellow-950/30 p-4 text-sm text-yellow-100">
+            Scenario catalog unavailable. Check that the backend is running at http://localhost:8080, then refresh the dashboard.
+          </div>
+        ) : (
+          scenarios.map((scenario) => (
+            <ScenarioButton
+              key={scenario.id}
+              icon={scenarioIcons[scenario.id] || '⚙️'}
+              title={scenario.title}
+              eyebrow={`${scenario.category} · ${scenario.difficulty}`}
+              chips={scenario.affectedComponents}
+              progressState={getProgressState(scenario.id)}
+              onClick={() => onTriggerScenario(scenario.id)}
+              isActive={activeScenario === scenario.id}
+            />
+          ))
+        )}
+
+        <div className="col-span-1 md:col-span-2 border-t border-slate-700/50 my-2"></div>
+        <ScenarioButton icon="👤" title="Generate Test User (Kafka)" onClick={onGenerateTestUser} />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ConfigurationPanel = ({ editorContent, onEditorChange }: { editorContent: string, onEditorChange: (value: string) => void }) => (
   <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
