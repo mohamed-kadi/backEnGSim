@@ -2,6 +2,7 @@ package com.backendlab;
 
 import com.backendlab.app.User;
 import com.backendlab.app.UserRepository;
+import com.backendlab.learning.LearningNoteRepository;
 import io.restassured.RestAssured;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,9 @@ public class ContractTestSuite {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private LearningNoteRepository learningNoteRepository;
+
     private Long testUserId;
 
     @BeforeEach
@@ -44,6 +48,7 @@ public class ContractTestSuite {
     public void cleanup() {
         given().post("/api/_system/scenario/reset").then().statusCode(200);
         userRepository.deleteAll();
+        learningNoteRepository.deleteAll();
         given().post("/api/_system/scenario/reset").then().statusCode(200);
     }
 
@@ -158,5 +163,42 @@ public class ContractTestSuite {
                 .then().statusCode(200);
         }
         // If the loop completes without an OutOfMemoryError, the controlled simulation works.
+    }
+
+    @Test
+    public void testLearningNotes_CanBeSavedAndReadByScenario() {
+        given().contentType("application/json")
+            .body("""
+                {
+                  "notes": "DTO regression broke the response contract.",
+                  "completed": true
+                }
+                """)
+            .when().put("/api/_learning/notes/01-dto-regression")
+            .then().statusCode(200)
+            .body("scenarioId", equalTo("01-dto-regression"))
+            .body("notes", equalTo("DTO regression broke the response contract."))
+            .body("completed", equalTo(true))
+            .body("updatedAt", notNullValue());
+
+        given()
+            .when().get("/api/_learning/notes/01-dto-regression")
+            .then().statusCode(200)
+            .body("scenarioId", equalTo("01-dto-regression"))
+            .body("notes", equalTo("DTO regression broke the response contract."))
+            .body("completed", equalTo(true));
+    }
+
+    @Test
+    public void testLearningNotes_RejectUnknownScenario() {
+        given().contentType("application/json")
+            .body("""
+                {
+                  "notes": "Unknown scenario",
+                  "completed": false
+                }
+                """)
+            .when().put("/api/_learning/notes/not-real")
+            .then().statusCode(404);
     }
 }

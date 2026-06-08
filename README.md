@@ -33,6 +33,8 @@ The dashboard includes a **System Map & Dependency Health** panel. It shows the 
 
 It also includes a **Guided Incident Runbook**. When a scenario is active, the dashboard shows what broke, where to collect evidence, which senior backend terms apply, and a local notes workspace for writing an incident diagnosis.
 
+Learner notes and scenario completion state are persisted through the backend learning API, with browser-local fallback when the backend is unavailable.
+
 ## Learning Material
 
 Start with these files:
@@ -147,3 +149,9 @@ The platform exposes endpoints to trigger incident scenarios dynamically:
 - `GET /api/_system/scenario/status`: Checks the current scenario status.
 - `GET /api/_system/scenario/catalog`: Returns the documented training catalog used by the dashboard.
 - `GET /api/_system/dependencies`: Returns live dependency status for the system map.
+
+## Learning API
+
+- `GET /api/_learning/notes`: Lists saved learning notes and completion state.
+- `GET /api/_learning/notes/{scenarioId}`: Returns the notes for one scenario.
+- `PUT /api/_learning/notes/{scenarioId}`: Saves learner notes and whether the scenario is complete.

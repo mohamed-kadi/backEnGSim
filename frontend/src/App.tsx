@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 type ScenarioDefinition = {
@@ -22,6 +22,13 @@ type DependencyStatus = {
   role: string;
   status: 'UP' | 'DOWN' | 'DEGRADED' | string;
   detail: string;
+};
+
+type LearningNote = {
+  scenarioId: string;
+  notes: string;
+  completed: boolean;
+  updatedAt: string | null;
 };
 
 const scenarioIcons: Record<string, string> = {
@@ -424,21 +431,90 @@ const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null 
 
 const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | null }) => {
   const [notes, setNotes] = useState('');
+  const [completed, setCompleted] = useState(false);
+  const [syncState, setSyncState] = useState<'idle' | 'saving' | 'saved' | 'offline'>('idle');
+  const [noteReady, setNoteReady] = useState(false);
   const storageKey = scenario ? `backendlab.runbook.${scenario.id}` : null;
 
   useEffect(() => {
     if (!storageKey) {
       setNotes('');
+      setCompleted(false);
+      setNoteReady(false);
       return;
     }
-    setNotes(localStorage.getItem(storageKey) || '');
-  }, [storageKey]);
+
+    const scenarioId = scenario?.id;
+    if (!scenarioId) return;
+
+    const fallback = readLocalLearningNote(storageKey, scenarioId);
+    setNotes(fallback.notes);
+    setCompleted(fallback.completed);
+    setSyncState('idle');
+    setNoteReady(false);
+
+    let cancelled = false;
+    fetch(`/api/_learning/notes/${scenarioId}`)
+      .then(readJson)
+      .then((data: LearningNote) => {
+        if (cancelled) return;
+        setNotes(data.notes || '');
+        setCompleted(Boolean(data.completed));
+        writeLocalLearningNote(storageKey, {
+          scenarioId,
+          notes: data.notes || '',
+          completed: Boolean(data.completed),
+          updatedAt: data.updatedAt || null,
+        });
+        setSyncState('saved');
+        setNoteReady(true);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch learning notes', error);
+        if (!cancelled) {
+          setSyncState('offline');
+          setNoteReady(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storageKey, scenario]);
+
+  useEffect(() => {
+    if (!scenario || !storageKey || !noteReady) return;
+
+    writeLocalLearningNote(storageKey, {
+      scenarioId: scenario.id,
+      notes,
+      completed,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setSyncState('saving');
+    const timeout = window.setTimeout(() => {
+      fetch(`/api/_learning/notes/${scenario.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes, completed }),
+      })
+        .then(readJson)
+        .then((data: LearningNote) => {
+          writeLocalLearningNote(storageKey, data);
+          setSyncState('saved');
+        })
+        .catch((error) => {
+          console.error('Failed to save learning notes', error);
+          setSyncState('offline');
+        });
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [notes, completed, scenario, storageKey, noteReady]);
 
   const saveNotes = (value: string) => {
     setNotes(value);
-    if (storageKey) {
-      localStorage.setItem(storageKey, value);
-    }
   };
 
   if (!scenario) {
@@ -516,14 +592,50 @@ const LearningRunbookPanel = ({ scenario }: { scenario: ScenarioDefinition | nul
             placeholder={summaryPrompt}
             className="min-h-64 w-full resize-y rounded border border-slate-700 bg-slate-950 p-3 font-mono text-sm leading-relaxed text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <p className="mt-2 text-xs text-slate-500">Saved locally in this browser for {scenario.id}.</p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={completed}
+                onChange={(event) => setCompleted(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-950 accent-emerald-500"
+              />
+              Mark scenario complete
+            </label>
+            <span className={`text-xs ${syncState === 'offline' ? 'text-yellow-300' : 'text-slate-500'}`}>
+              {syncState === 'saving' ? 'Saving...' : syncState === 'offline' ? 'Saved locally; backend unavailable' : 'Saved to learning notes'}
+            </span>
+          </div>
         </RunbookSection>
       </div>
     </div>
   );
 };
 
-const RunbookSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
+const readLocalLearningNote = (storageKey: string, scenarioId: string): LearningNote => {
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) {
+    return { scenarioId, notes: '', completed: false, updatedAt: null };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<LearningNote>;
+    return {
+      scenarioId,
+      notes: parsed.notes || '',
+      completed: Boolean(parsed.completed),
+      updatedAt: parsed.updatedAt || null,
+    };
+  } catch {
+    return { scenarioId, notes: raw, completed: false, updatedAt: null };
+  }
+};
+
+const writeLocalLearningNote = (storageKey: string, note: LearningNote) => {
+  localStorage.setItem(storageKey, JSON.stringify(note));
+};
+
+const RunbookSection = ({ title, children }: { title: string, children: ReactNode }) => (
   <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
     <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">{title}</h4>
     {children}
