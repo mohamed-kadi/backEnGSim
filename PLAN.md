@@ -133,6 +133,7 @@ Tasks:
 - [x] Add affected-component hints to scenario cards.
 - [x] Keep compact dependency health in the global inspector.
 - [x] Add scenario completion badges to scenario catalog buttons.
+- [x] Add dependency-specific drills for PostgreSQL, Redis, Kafka, and HTTP/order-service.
 
 Recommended commit:
 
@@ -163,7 +164,6 @@ git commit -m "feat: add ddd learning track"
 
 - [ ] Persist exported reports as first-class backend records.
 - [ ] Add report diffing between first diagnosis and final diagnosis.
-- [ ] Add dependency-specific drills for PostgreSQL, Redis, Kafka, and HTTP clients.
 - [ ] Add rate-limiting and retry policy exercises.
 - [ ] Add OpenAPI contract-diff learning scenario.
 - [ ] Add Git workflow labs for `git bisect`, rollback, and regression analysis.

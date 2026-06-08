@@ -49,6 +49,8 @@ The full system map lives in the System view. Other views keep compact context t
 
 Scenario catalog cards show whether each lab is new, started, or completed, so learners can choose the next exercise without switching to the progress view first.
 
+The System view also includes dependency drills for PostgreSQL, Redis, Kafka, and HTTP/order-service boundaries. Each drill explains what to inspect and which backend vocabulary to use when writing an incident diagnosis.
+
 ## Learning Material
 
 Start with these files:

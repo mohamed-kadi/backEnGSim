@@ -249,6 +249,7 @@ management.endpoints.web.exposure.include=health,prometheus
             {activeView === 'system' && (
               <>
                 <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
+                <DependencyDrillsPanel activeScenario={activeScenarioDetails} dependencies={dependencies} />
                 {systemToolsPanel}
               </>
             )}
@@ -601,6 +602,61 @@ const componentNodes = [
   { id: 'order', name: 'Order Service', role: 'Secondary service / saga boundary', icon: '📦' },
 ];
 
+const dependencyDrills = [
+  {
+    id: 'postgres',
+    name: 'PostgreSQL',
+    icon: '🗄️',
+    boundary: 'Transactional persistence',
+    scenarioIds: ['03-db-connection', '05-write-failure'],
+    terms: ['connection pool', 'transaction boundary', 'write path', 'durability'],
+    checks: [
+      'Compare API errors with repository and datasource logs.',
+      'Decide whether the failure is connection exhaustion, write rejection, or transactional rollback.',
+      'Explain the user impact in terms of reads, writes, and consistency guarantees.',
+    ],
+  },
+  {
+    id: 'redis',
+    name: 'Redis',
+    icon: '⚡',
+    boundary: 'Cache and read acceleration',
+    scenarioIds: ['04-cache-stampede'],
+    terms: ['cache stampede', 'TTL', 'fallback path', 'hot key'],
+    checks: [
+      'Look for repeated backend work after a cache miss.',
+      'Decide whether Redis is optional acceleration or a hard runtime dependency.',
+      'Propose mitigation with TTL jitter, request coalescing, or stale-while-revalidate.',
+    ],
+  },
+  {
+    id: 'kafka',
+    name: 'Kafka',
+    icon: '📨',
+    boundary: 'Asynchronous event backbone',
+    scenarioIds: ['07-kafka-consumer-lag'],
+    terms: ['consumer lag', 'offset', 'partition', 'eventual consistency'],
+    checks: [
+      'Separate producer success from consumer processing success.',
+      'Explain how lag changes freshness without always breaking the synchronous request.',
+      'Name the replay, retry, or dead-letter behavior you would expect in production.',
+    ],
+  },
+  {
+    id: 'order',
+    name: 'HTTP / Order Service',
+    icon: '📦',
+    boundary: 'Cross-service call and saga boundary',
+    scenarioIds: ['08-saga-failure', '02-api-latency'],
+    terms: ['timeout budget', 'retry policy', 'compensation', 'partial failure'],
+    checks: [
+      'Check whether the backend blocks on the downstream service or degrades gracefully.',
+      'Describe whether a retry would amplify load or improve recovery.',
+      'Decide whether the workflow needs compensation, idempotency, or an outbox.',
+    ],
+  },
+];
+
 const SystemMapPanel = ({ dependencies, affectedComponents }: { dependencies: DependencyStatus[], affectedComponents: string[] }) => {
   const statusById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
 
@@ -632,6 +688,70 @@ const SystemMapPanel = ({ dependencies, affectedComponents }: { dependencies: De
               </div>
               <p className="mt-3 text-xs leading-relaxed text-slate-400">{health?.detail || (isAffected ? 'Affected by active scenario' : 'No live probe required')}</p>
             </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const DependencyDrillsPanel = ({ activeScenario, dependencies }: { activeScenario: ScenarioDefinition | null, dependencies: DependencyStatus[] }) => {
+  const statusById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
+
+  return (
+    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg mb-8">
+      <div className="mb-4 border-b border-slate-700 pb-2">
+        <h3 className="text-lg font-semibold text-slate-300">Dependency Drills</h3>
+        <p className="text-sm text-slate-400 mt-1">Use these drills to turn health checks into a backend investigation habit.</p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {dependencyDrills.map((drill) => {
+          const health = statusById.get(drill.id);
+          const isScenarioRelevant = Boolean(activeScenario && drill.scenarioIds.includes(activeScenario.id));
+          const status = health?.status || 'UNKNOWN';
+
+          return (
+            <article
+              key={drill.id}
+              className={`rounded-lg border p-4 ${isScenarioRelevant ? 'border-cyan-500/70 bg-cyan-950/20' : 'border-slate-700 bg-slate-900/60'}`}
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="shrink-0 text-xl">{drill.icon}</span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-semibold text-slate-100">{drill.name}</h4>
+                      {isScenarioRelevant && (
+                        <span className="rounded border border-cyan-600/60 bg-cyan-950/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-normal text-cyan-200">Active Drill</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{drill.boundary}</p>
+                  </div>
+                </div>
+                <StatusPill status={status} />
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Investigation Checks</p>
+                <ul className="mt-2 space-y-2">
+                  {drill.checks.map((check) => (
+                    <li key={check} className="flex gap-2 text-sm leading-relaxed text-slate-300">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                      <span>{check}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {drill.terms.map((term) => (
+                  <span key={term} className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-[11px] font-semibold text-slate-400">
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </article>
           );
         })}
       </div>
