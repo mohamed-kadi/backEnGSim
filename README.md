@@ -36,6 +36,7 @@ Start with these files:
 - [TUTORIALS.md](TUTORIALS.md): guided scenario walkthroughs.
 - [docs/LEARNING_PATH.md](docs/LEARNING_PATH.md): recommended path from beginner to advanced topics.
 - [docs/SCENARIO_CATALOG.md](docs/SCENARIO_CATALOG.md): full incident catalog and investigation prompts.
+- [docs/EXERCISES.md](docs/EXERCISES.md): hands-on prompts for incident notes, DDD reflection, and system-design practice.
 - [docs/GLOSSARY.md](docs/GLOSSARY.md): senior backend, DDD, SRE, and system-design vocabulary.
 
 ## Prerequisites
@@ -57,7 +58,21 @@ cp .env.example .env
 
 ### 2. Start Infrastructure
 
-Start PostgreSQL, Redis, Kafka, Prometheus, and Grafana:
+The fastest local startup is:
+
+```bash
+./scripts/dev-up.sh
+```
+
+This starts Docker infrastructure, the backend, the order service, and the React dashboard. Logs and process IDs are stored under `.lab/`.
+
+Stop everything with:
+
+```bash
+./scripts/dev-down.sh
+```
+
+If you prefer manual startup, start PostgreSQL, Redis, Kafka, Prometheus, and Grafana first:
 
 ```bash
 docker-compose up -d
@@ -98,10 +113,10 @@ Default local URLs:
 ### 4. Verify
 
 ```bash
-mvn test
-cd frontend
-npm run build
+./scripts/verify.sh
 ```
+
+The verification script starts the required Docker test infrastructure before running Maven and the frontend build.
 
 ## Fault Injection API
 

@@ -31,6 +31,9 @@ frontend/dist/
 # Metals
 .metals/
 
+# Local lab runtime files
+.lab/
+
 # Environment variables (Crucial for security!)
 .env
 *.env.local

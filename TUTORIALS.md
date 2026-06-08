@@ -77,4 +77,5 @@ These scenarios simulate broken CI/CD pipelines caused by bad code being merged 
 
 - [docs/LEARNING_PATH.md](docs/LEARNING_PATH.md)
 - [docs/SCENARIO_CATALOG.md](docs/SCENARIO_CATALOG.md)
+- [docs/EXERCISES.md](docs/EXERCISES.md)
 - [docs/GLOSSARY.md](docs/GLOSSARY.md)
