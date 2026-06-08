@@ -61,6 +61,7 @@ The platform should help a learner:
 - [x] Browser-local fallback for notes if the backend is unavailable.
 - [x] Learning progress panel by scenario and category.
 - [x] Markdown incident report export.
+- [x] Sidebar-based dashboard workspace layout.
 
 ### Documentation
 
@@ -113,7 +114,26 @@ Recommended commit:
 git commit -m "feat: add report history view"
 ```
 
-### 3. DDD Learning Track
+### 3. Dashboard Workspace Layout Refactor
+
+Status: completed
+
+Goal: keep the growing dashboard usable by grouping features into focused workspace views.
+
+Tasks:
+
+- [x] Add sidebar navigation.
+- [x] Move long-scroll content into focused views.
+- [x] Keep active scenario status visible globally.
+- [x] Add right-side inspector for active scenario, dependency alerts, and quick actions.
+
+Recommended commit:
+
+```bash
+git commit -m "feat: organize dashboard workspace"
+```
+
+### 4. DDD Learning Track
 
 Status: planned
 
@@ -172,6 +192,7 @@ Use `./scripts/verify.sh` for broader verification when Docker Desktop is runnin
 - `77739e3` - add learning progress panel
 - `c4351e4` - export incident reports
 - `3ee7768` - validate learning notes
+- `c5de821` - add report history view
 
 ## Working Rules
 

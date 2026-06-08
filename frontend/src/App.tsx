@@ -31,6 +31,8 @@ type LearningNote = {
   updatedAt: string | null;
 };
 
+type WorkspaceView = 'overview' | 'scenarios' | 'runbook' | 'reports' | 'system';
+
 const scenarioIcons: Record<string, string> = {
   '01-dto-regression': '💣',
   '02-api-latency': '🐌',
@@ -43,6 +45,14 @@ const scenarioIcons: Record<string, string> = {
   '09-rate-limiting': '🚦',
 };
 
+const workspaceViews: { id: WorkspaceView, label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'scenarios', label: 'Scenarios' },
+  { id: 'runbook', label: 'Runbook' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'system', label: 'System' },
+];
+
 const readJson = async (res: Response) => {
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText}`);
@@ -51,6 +61,7 @@ const readJson = async (res: Response) => {
 };
 
 export default function App() {
+  const [activeView, setActiveView] = useState<WorkspaceView>('overview');
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioCatalog, setScenarioCatalog] = useState<ScenarioDefinition[]>([]);
   const [dependencies, setDependencies] = useState<DependencyStatus[]>([]);
@@ -150,6 +161,11 @@ management.endpoints.web.exposure.include=health,prometheus
     fetchStatus();
   };
 
+  const openScenarioRunbook = async (id: string) => {
+    await triggerScenario(id);
+    setActiveView('runbook');
+  };
+
   const resetSystem = async () => {
     await fetch('/api/_system/scenario/reset', { method: 'POST' });
     fetchStatus();
@@ -173,107 +189,77 @@ management.endpoints.web.exposure.include=health,prometheus
     fetchLearningNotes();
   };
 
+  const scenarioCatalogPanel = (
+    <ScenarioCatalogPanel
+      scenarios={scenarioCatalog}
+      activeScenario={activeScenario}
+      onTriggerScenario={openScenarioRunbook}
+      onGenerateTestUser={generateTestUser}
+    />
+  );
+
+  const systemToolsPanel = (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <ConfigurationPanel editorContent={editorContent} onEditorChange={setEditorContent} />
+      <LogsPanel logs={logs} terminalContainerRef={terminalContainerRef} />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen p-8 max-w-6xl mx-auto font-sans">
-      <header className="mb-8 border-b border-slate-700 pb-4">
-        <h1 className="text-3xl font-bold text-emerald-400 tracking-tight">🚀 SRE Operations Dashboard</h1>
-        <p className="text-slate-400 mt-2">Chaos Engineering & Incident Simulation Control Panel</p>
-      </header>
-      
-      <div className={`p-6 rounded-lg mb-8 shadow-lg transition-colors duration-300 border ${activeScenario ? 'bg-red-950 border-red-700' : 'bg-slate-800 border-slate-700'}`}>
-        <h2 className="text-xl font-mono flex items-center gap-3">
-          <span className="text-slate-400">STATUS:</span> 
-          {activeScenario ? (
-            <span className="text-red-400 animate-pulse">⚠️ INCIDENT ACTIVE ({activeScenario})</span>
-          ) : (
-            <span className="text-emerald-400">✅ NORMAL</span>
-          )}
-        </h2>
-      </div>
+    <div className="min-h-screen font-sans">
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
+        <WorkspaceSidebar activeView={activeView} onViewChange={setActiveView} />
 
-      <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
+        <main className="min-w-0 border-x border-slate-800 bg-slate-950/40">
+          <WorkspaceHeader activeScenario={activeScenario} activeView={activeView} />
 
-      <LearningProgressPanel scenarios={scenarioCatalog} notes={learningNotes} />
+          <div className="p-4 md:p-6 space-y-6">
+            {activeView === 'overview' && (
+              <>
+                <LearningProgressPanel scenarios={scenarioCatalog} notes={learningNotes} />
+                <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
+                <PipelineVisualizer activeScenario={activeScenario} />
+              </>
+            )}
 
-      <ReportHistoryPanel
-        scenarios={scenarioCatalog}
-        notes={learningNotes}
-        activeScenario={activeScenario}
-        onOpenScenario={triggerScenario}
-        onSetCompleted={updateReportCompletion}
-      />
+            {activeView === 'scenarios' && scenarioCatalogPanel}
 
-      <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
-        <div className="mb-4 border-b border-slate-700 pb-2">
-          <h3 className="text-lg font-semibold text-slate-300">Scenario Catalog</h3>
-          <p className="text-sm text-slate-400 mt-1">Each scenario teaches a production failure pattern, the senior-level diagnosis, and a concrete investigation path.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {scenarioCatalog.length === 0 ? (
-            <div className="md:col-span-2 rounded-lg border border-yellow-600/40 bg-yellow-950/30 p-4 text-sm text-yellow-100">
-              Scenario catalog unavailable. Check that the backend is running at http://localhost:8080, then refresh the dashboard.
-            </div>
-          ) : (
-            scenarioCatalog.map((scenario) => (
-              <ScenarioButton
-                key={scenario.id}
-                icon={scenarioIcons[scenario.id] || '⚙️'}
-                title={scenario.title}
-                eyebrow={`${scenario.category} · ${scenario.difficulty}`}
-                onClick={() => triggerScenario(scenario.id)}
-                isActive={activeScenario === scenario.id}
+            {activeView === 'runbook' && (
+              <>
+                <LearningPanel scenario={activeScenarioDetails} />
+                <LearningRunbookPanel scenario={activeScenarioDetails} onProgressChanged={fetchLearningNotes} />
+              </>
+            )}
+
+            {activeView === 'reports' && (
+              <ReportHistoryPanel
+                scenarios={scenarioCatalog}
+                notes={learningNotes}
+                activeScenario={activeScenario}
+                onOpenScenario={openScenarioRunbook}
+                onSetCompleted={updateReportCompletion}
               />
-            ))
-          )}
+            )}
 
-          {/* Diagnostic Button */}
-          <div className="col-span-1 md:col-span-2 border-t border-slate-700/50 my-2"></div>
-          <ScenarioButton icon="👤" title="Generate Test User (Kafka)" onClick={generateTestUser} />
-        </div>
+            {activeView === 'system' && (
+              <>
+                <SystemMapPanel dependencies={dependencies} affectedComponents={activeScenarioDetails?.affectedComponents || []} />
+                {systemToolsPanel}
+              </>
+            )}
+          </div>
+        </main>
+
+        <WorkspaceInspector
+          activeScenario={activeScenarioDetails}
+          activeScenarioId={activeScenario}
+          dependencies={dependencies}
+          learningNotes={learningNotes}
+          onResetSystem={resetSystem}
+          onOpenRunbook={() => setActiveView('runbook')}
+          onOpenReports={() => setActiveView('reports')}
+        />
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
-          <h3 className="text-lg font-semibold text-slate-300 mb-4 border-b border-slate-700 pb-2">Live Configuration</h3>
-          <div className="h-64 rounded overflow-hidden border border-slate-700">
-            <Editor
-              height="100%"
-              defaultLanguage="ini"
-              theme="vs-dark"
-              value={editorContent}
-              onChange={(value) => setEditorContent(value || '')}
-            />
-          </div>
-        </div>
-
-          <div className="bg-black rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden flex flex-col">
-            <WindowHeader title="system-terminal ~ tail -f /var/log/syslog" />
-            <div ref={terminalContainerRef} className="p-4 font-mono text-xs h-72 overflow-y-auto scroll-smooth leading-relaxed">
-              {logs.length === 0 ? (
-                <div className="text-slate-600 italic">Waiting for system events...</div>
-              ) : (
-                logs.map((log, idx) => (
-                  <div key={idx} className={`${log.includes('FAULT INJECTED') ? 'text-red-400 font-bold' : 'text-emerald-500'} ${log.includes('SCENARIO ENGINE') ? 'text-cyan-400' : ''} ${log.includes('KAFKA') ? 'text-purple-400 font-bold' : ''}`}>
-                    {log}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <PipelineVisualizer activeScenario={activeScenario} />
-
-        <LearningPanel scenario={activeScenarioDetails} />
-
-        <LearningRunbookPanel scenario={activeScenarioDetails} onProgressChanged={fetchLearningNotes} />
-
-        <button 
-          onClick={resetSystem} 
-          className="w-full mt-4 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.01] border border-emerald-500/50 tracking-wide"
-        >
-          ✅ Reset to Normal
-        </button>
     </div>
   );
 }
@@ -303,6 +289,192 @@ const ScenarioButton = ({ icon, title, eyebrow, onClick, isActive }: { icon: str
     </button>
   );
 };
+
+const WorkspaceSidebar = ({ activeView, onViewChange }: { activeView: WorkspaceView, onViewChange: (view: WorkspaceView) => void }) => (
+  <aside className="border-b border-slate-800 bg-slate-950 p-4 lg:sticky lg:top-0 lg:h-screen lg:border-b-0">
+    <div className="mb-5">
+      <h1 className="text-lg font-bold tracking-tight text-emerald-300">Backend Lab</h1>
+      <p className="mt-1 text-xs text-slate-500">Systems learning workspace</p>
+    </div>
+    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-1">
+      {workspaceViews.map((view) => (
+        <button
+          key={view.id}
+          type="button"
+          onClick={() => onViewChange(view.id)}
+          className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors ${activeView === view.id ? 'border-emerald-600/60 bg-emerald-950/40 text-emerald-200' : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
+        >
+          {view.label}
+        </button>
+      ))}
+    </nav>
+  </aside>
+);
+
+const WorkspaceHeader = ({ activeScenario, activeView }: { activeScenario: string | null, activeView: WorkspaceView }) => {
+  const viewLabel = workspaceViews.find((view) => view.id === activeView)?.label || 'Overview';
+
+  return (
+    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/95 px-4 py-4 backdrop-blur md:px-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Workspace</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-100">{viewLabel}</h2>
+        </div>
+        <div className={`rounded-lg border px-4 py-2 text-sm font-bold ${activeScenario ? 'border-red-700 bg-red-950/40 text-red-200' : 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'}`}>
+          {activeScenario ? `Incident active: ${activeScenario}` : 'System normal'}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+const WorkspaceInspector = ({
+  activeScenario,
+  activeScenarioId,
+  dependencies,
+  learningNotes,
+  onResetSystem,
+  onOpenRunbook,
+  onOpenReports,
+}: {
+  activeScenario: ScenarioDefinition | null,
+  activeScenarioId: string | null,
+  dependencies: DependencyStatus[],
+  learningNotes: LearningNote[],
+  onResetSystem: () => void,
+  onOpenRunbook: () => void,
+  onOpenReports: () => void,
+}) => {
+  const note = activeScenarioId ? learningNotes.find((item) => item.scenarioId === activeScenarioId) : null;
+  const unhealthyDependencies = dependencies.filter((dependency) => dependency.status !== 'UP');
+
+  return (
+    <aside className="border-t border-slate-800 bg-slate-950 p-4 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-t-0">
+      <div className="space-y-4">
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Active Scenario</p>
+          {activeScenario ? (
+            <div className="mt-3">
+              <h3 className="text-sm font-semibold text-slate-100">{activeScenario.title}</h3>
+              <p className="mt-1 text-xs text-slate-500">{activeScenario.category} / {activeScenario.difficulty}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {activeScenario.affectedComponents.map((component) => (
+                  <span key={component} className="rounded border border-red-800/60 bg-red-950/30 px-2 py-1 text-xs text-red-200">{component}</span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">No incident is active.</p>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Quick Actions</p>
+          <div className="mt-3 grid gap-2">
+            <button type="button" onClick={onOpenRunbook} className="rounded-lg border border-blue-700/60 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 hover:bg-blue-900/40">Open Runbook</button>
+            <button type="button" onClick={onOpenReports} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700">Open Reports</button>
+            <button type="button" onClick={onResetSystem} className="rounded-lg border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-900/40">Reset System</button>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Learning State</p>
+          <p className="mt-3 text-sm text-slate-300">{note?.completed ? 'Current scenario completed' : activeScenario ? 'Current scenario in progress' : 'Choose a scenario to begin'}</p>
+          {note?.updatedAt && <p className="mt-1 text-xs text-slate-500">Updated {formatUpdatedAt(note.updatedAt)}</p>}
+        </section>
+
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Dependency Alerts</p>
+          <div className="mt-3 space-y-2">
+            {unhealthyDependencies.length === 0 ? (
+              <p className="text-sm text-emerald-300">All probed dependencies are healthy.</p>
+            ) : (
+              unhealthyDependencies.map((dependency) => (
+                <div key={dependency.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-slate-300">{dependency.name}</span>
+                  <StatusPill status={dependency.status} />
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </aside>
+  );
+};
+
+const ScenarioCatalogPanel = ({
+  scenarios,
+  activeScenario,
+  onTriggerScenario,
+  onGenerateTestUser,
+}: {
+  scenarios: ScenarioDefinition[],
+  activeScenario: string | null,
+  onTriggerScenario: (id: string) => void,
+  onGenerateTestUser: () => void,
+}) => (
+  <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
+    <div className="mb-4 border-b border-slate-700 pb-2">
+      <h3 className="text-lg font-semibold text-slate-300">Scenario Catalog</h3>
+      <p className="text-sm text-slate-400 mt-1">Each scenario teaches a production failure pattern, the senior-level diagnosis, and a concrete investigation path.</p>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {scenarios.length === 0 ? (
+        <div className="md:col-span-2 rounded-lg border border-yellow-600/40 bg-yellow-950/30 p-4 text-sm text-yellow-100">
+          Scenario catalog unavailable. Check that the backend is running at http://localhost:8080, then refresh the dashboard.
+        </div>
+      ) : (
+        scenarios.map((scenario) => (
+          <ScenarioButton
+            key={scenario.id}
+            icon={scenarioIcons[scenario.id] || '⚙️'}
+            title={scenario.title}
+            eyebrow={`${scenario.category} · ${scenario.difficulty}`}
+            onClick={() => onTriggerScenario(scenario.id)}
+            isActive={activeScenario === scenario.id}
+          />
+        ))
+      )}
+
+      <div className="col-span-1 md:col-span-2 border-t border-slate-700/50 my-2"></div>
+      <ScenarioButton icon="👤" title="Generate Test User (Kafka)" onClick={onGenerateTestUser} />
+    </div>
+  </div>
+);
+
+const ConfigurationPanel = ({ editorContent, onEditorChange }: { editorContent: string, onEditorChange: (value: string) => void }) => (
+  <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">
+    <h3 className="text-lg font-semibold text-slate-300 mb-4 border-b border-slate-700 pb-2">Live Configuration</h3>
+    <div className="h-80 rounded overflow-hidden border border-slate-700">
+      <Editor
+        height="100%"
+        defaultLanguage="ini"
+        theme="vs-dark"
+        value={editorContent}
+        onChange={(value) => onEditorChange(value || '')}
+      />
+    </div>
+  </div>
+);
+
+const LogsPanel = ({ logs, terminalContainerRef }: { logs: string[], terminalContainerRef: { current: HTMLDivElement | null } }) => (
+  <div className="bg-black rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden flex flex-col">
+    <WindowHeader title="system-terminal ~ tail -f /var/log/syslog" />
+    <div ref={terminalContainerRef} className="p-4 font-mono text-xs h-80 overflow-y-auto scroll-smooth leading-relaxed">
+      {logs.length === 0 ? (
+        <div className="text-slate-600 italic">Waiting for system events...</div>
+      ) : (
+        logs.map((log, idx) => (
+          <div key={idx} className={`${log.includes('FAULT INJECTED') ? 'text-red-400 font-bold' : 'text-emerald-500'} ${log.includes('SCENARIO ENGINE') ? 'text-cyan-400' : ''} ${log.includes('KAFKA') ? 'text-purple-400 font-bold' : ''}`}>
+            {log}
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+);
 
 const componentNodes = [
   { id: 'client', name: 'Client / k6', role: 'Traffic source and API consumer', icon: '💻' },
