@@ -47,7 +47,30 @@ Review question:
 
 What test would you add so this never ships unnoticed again?
 
-## 2. Latency And Thread Exhaustion
+## 2. OpenAPI Contract Drift
+
+Scenario: `10-openapi-contract-drift`
+
+Task:
+
+1. Fetch a user in normal mode and record the `email` field.
+2. Activate the scenario.
+3. Fetch the same user again.
+4. Compare `email` with `contactEmail`.
+5. Explain why an OpenAPI diff check should block this deployment.
+
+Senior vocabulary to use:
+
+- OpenAPI
+- schema drift
+- generated client
+- contract diff
+
+Review question:
+
+How would you migrate from `email` to `contactEmail` without breaking existing consumers?
+
+## 3. Latency And Thread Exhaustion
 
 Scenario: `02-api-latency`
 
@@ -69,7 +92,7 @@ Review question:
 
 Would adding more application instances solve the root cause or only increase capacity temporarily?
 
-## 3. Database Boundary Failure
+## 4. Database Boundary Failure
 
 Scenario: `03-db-connection`
 
@@ -91,7 +114,7 @@ Review question:
 
 Which endpoints should fail closed, and which could return stale or degraded data?
 
-## 4. Cache Stampede
+## 5. Cache Stampede
 
 Scenario: `04-cache-stampede`
 
@@ -113,7 +136,7 @@ Review question:
 
 When is serving stale data better than returning an error?
 
-## 5. Write Path And Idempotency
+## 6. Write Path And Idempotency
 
 Scenario: `05-write-failure`
 
@@ -135,7 +158,7 @@ Review question:
 
 How would you prevent duplicate side effects if the client retries after a timeout?
 
-## 6. Memory Leak
+## 7. Memory Leak
 
 Scenario: `06-memory-leak`
 
@@ -157,7 +180,7 @@ Review question:
 
 Why is "restart the service" a mitigation but not a fix?
 
-## 7. Kafka Consumer Lag
+## 8. Kafka Consumer Lag
 
 Scenario: `07-kafka-consumer-lag`
 
@@ -179,7 +202,7 @@ Review question:
 
 When would you scale consumers, and when would you optimize downstream processing first?
 
-## 8. Saga Failure
+## 9. Saga Failure
 
 Scenario: `08-saga-failure`
 
@@ -201,7 +224,7 @@ Review question:
 
 What state would you persist so the workflow can resume safely after a crash?
 
-## 9. Rate Limiting
+## 10. Rate Limiting
 
 Scenario: `09-rate-limiting`
 

@@ -22,6 +22,8 @@ The core of the fault injection relies on **Spring AOP (Aspect-Oriented Programm
 3. If an aspect detects that its corresponding scenario is active, it intercepts the call to mutate the response, add latency, or throw exceptions.
 4. The **ScenarioCatalog** documents each scenario and exposes it to the dashboard through `/api/_system/scenario/catalog`.
 
+API-contract scenarios include both DTO field removal and OpenAPI-style schema drift, so learners can compare runtime payload regressions with compatibility checks that should run in CI.
+
 ### Services
 
 - `backend`: main Spring Boot service with the User API, scenario engine, Kafka producer/consumer, and fault injection.

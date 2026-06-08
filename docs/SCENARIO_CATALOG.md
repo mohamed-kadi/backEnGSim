@@ -169,3 +169,21 @@ Learn:
 Senior diagnosis:
 
 The service is shedding load intentionally to protect availability.
+
+## `10-openapi-contract-drift`
+
+Category: API Contracts
+
+Trigger: `GET /api/users/{id}`
+
+Failure: the response returns `contactEmail` instead of the documented `email` field.
+
+Learn:
+
+- OpenAPI is an executable contract when clients are generated from it.
+- Renaming a response field is backward-incompatible unless the old field is preserved during migration.
+- Contract diff checks should run before deployment, not after consumers break.
+
+Senior diagnosis:
+
+This is a schema evolution failure. The endpoint returns HTTP 200, but generated clients and runtime behavior disagree.

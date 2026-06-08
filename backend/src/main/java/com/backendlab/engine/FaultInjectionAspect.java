@@ -12,6 +12,9 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Aspect
 @Component
 public class FaultInjectionAspect {
@@ -52,6 +55,32 @@ public class FaultInjectionAspect {
             }
         }
         
+        return result;
+    }
+
+    /**
+     * Intercepts getUserById to simulate OpenAPI drift where the runtime payload no longer matches
+     * the documented/generated client contract.
+     */
+    @Around("execution(* com.backendlab.app.UserController.getUserById(..))")
+    public Object injectOpenApiContractDrift(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object result = joinPoint.proceed();
+
+        if (scenarioEngine.isScenarioActive("10-openapi-contract-drift")) {
+            logAndRecordFault("10-openapi-contract-drift", "Renaming email to contactEmail to simulate OpenAPI contract drift");
+            if (result instanceof ResponseEntity) {
+                ResponseEntity<?> response = (ResponseEntity<?>) result;
+                if (response.getBody() instanceof User) {
+                    User user = (User) response.getBody();
+                    Map<String, Object> driftedPayload = new LinkedHashMap<>();
+                    driftedPayload.put("id", user.getId());
+                    driftedPayload.put("username", user.getUsername());
+                    driftedPayload.put("contactEmail", user.getEmail());
+                    return ResponseEntity.status(response.getStatusCode()).body(driftedPayload);
+                }
+            }
+        }
+
         return result;
     }
 

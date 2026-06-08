@@ -31,6 +31,7 @@ The platform should help a learner:
   - [x] `07-kafka-consumer-lag`
   - [x] `08-saga-failure`
   - [x] `09-rate-limiting`
+  - [x] `10-openapi-contract-drift`
 
 ### Distributed Systems Environment
 
@@ -142,7 +143,27 @@ Recommended commit:
 git commit -m "feat: organize dashboard workspace"
 ```
 
-### 4. DDD Learning Track
+### 4. OpenAPI Contract Drift Scenario
+
+Status: completed
+
+Goal: teach API schema evolution and contract-diff thinking through a runtime failure.
+
+Tasks:
+
+- [x] Add `10-openapi-contract-drift` to the backend scenario catalog.
+- [x] Inject a backward-incompatible `email` to `contactEmail` response rename.
+- [x] Add a contract test that proves the drift behavior.
+- [x] Map the scenario into dashboard icon, topology, and pipeline views.
+- [x] Document the scenario in tutorials, exercises, and the scenario catalog.
+
+Recommended commit:
+
+```bash
+git commit -m "feat: add openapi contract drift scenario"
+```
+
+### 5. DDD Learning Track
 
 Status: planned
 
@@ -165,7 +186,6 @@ git commit -m "feat: add ddd learning track"
 
 - [ ] Persist exported reports as first-class backend records.
 - [ ] Add report diffing between first diagnosis and final diagnosis.
-- [ ] Add OpenAPI contract-diff learning scenario.
 - [ ] Add Git workflow labs for `git bisect`, rollback, and regression analysis.
 - [ ] Add CI workflow that runs backend tests, frontend build, and smoke checks.
 

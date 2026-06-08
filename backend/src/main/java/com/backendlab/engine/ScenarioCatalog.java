@@ -179,6 +179,25 @@ public class ScenarioCatalog {
                             "Confirm the status code is 429 rather than 500.",
                             "Design the client retry behavior."
                     )
+            ),
+            new ScenarioDefinition(
+                    "10-openapi-contract-drift",
+                    "OpenAPI Contract Drift",
+                    "API Contracts",
+                    "Intermediate",
+                    "GET /api/users/{id}",
+                    "The response returns contactEmail instead of the documented email field.",
+                    "Learn how OpenAPI specs, generated clients, and runtime payloads drift when schema compatibility is not enforced.",
+                    "This is a schema evolution failure. The endpoint still returns HTTP 200, but the producer changed a field name without a compatibility plan, so generated clients and contract tests disagree with runtime behavior.",
+                    "Version the API or preserve the old field, run OpenAPI diff checks in CI, and require consumer-aware migration before removing or renaming fields.",
+                    List.of("client", "api", "aop"),
+                    List.of("OpenAPI", "schema drift", "generated client", "contract diff"),
+                    List.of(
+                            "Call GET /api/users/{id} and record the documented user schema.",
+                            "Activate the scenario and repeat the request.",
+                            "Compare email versus contactEmail and identify the backward-incompatible rename.",
+                            "Explain where an OpenAPI diff check should block the release."
+                    )
             )
     );
 

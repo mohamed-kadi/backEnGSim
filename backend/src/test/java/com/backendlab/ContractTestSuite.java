@@ -79,6 +79,20 @@ public class ContractTestSuite {
     }
 
     @Test
+    public void testOpenApiContractDriftScenario_RenamesDocumentedField() {
+        given().pathParam("id", "10-openapi-contract-drift")
+            .when().post("/api/_system/scenario/activate/{id}")
+            .then().statusCode(200).body("status", equalTo("activated"));
+
+        given().pathParam("id", testUserId)
+            .when().get("/api/users/{id}")
+            .then().statusCode(200)
+            .body("username", equalTo("contract_tester"))
+            .body("email", nullValue())
+            .body("contactEmail", equalTo("tester@example.com"));
+    }
+
+    @Test
     public void testApiLatencyScenario_AddsDelay() {
         // 1. Activate the latency incident
         given().pathParam("id", "02-api-latency")

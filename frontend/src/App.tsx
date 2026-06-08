@@ -44,6 +44,7 @@ const scenarioIcons: Record<string, string> = {
   '07-kafka-consumer-lag': '🐢',
   '08-saga-failure': '🔗',
   '09-rate-limiting': '🚦',
+  '10-openapi-contract-drift': '📄',
 };
 
 const workspaceViews: { id: WorkspaceView, label: string }[] = [
@@ -1090,7 +1091,7 @@ const PipelineVisualizer = ({ activeScenario }: { activeScenario: string | null 
   const rawSteps = [
     { name: 'Build', isFailurePoint: false },
     { name: 'Unit Tests', isFailurePoint: false },
-    { name: 'Contract Tests', isFailurePoint: activeScenario === '01-dto-regression' },
+    { name: 'Contract Tests', isFailurePoint: ['01-dto-regression', '10-openapi-contract-drift'].includes(activeScenario || '') },
     { name: 'Integration', isFailurePoint: ['02-api-latency', '03-db-connection', '04-cache-stampede', '05-write-failure', '06-memory-leak', '07-kafka-consumer-lag', '08-saga-failure', '09-rate-limiting'].includes(activeScenario || '') },
     { name: 'Deploy', isFailurePoint: false }
   ];
@@ -1453,6 +1454,7 @@ const TopologyDiagram = ({ activeScenario }: { activeScenario: string }) => {
       '07-kafka-consumer-lag': ['kafka'],
       '08-saga-failure': ['order'],
       '09-rate-limiting': ['api'],
+      '10-openapi-contract-drift': ['client', 'api', 'aop'],
     };
     const affected = map[activeScenario] || [];
     if (affected.includes(node)) {

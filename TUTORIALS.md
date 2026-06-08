@@ -30,6 +30,11 @@ These scenarios are injected dynamically into the running application via the Ch
 - **What it does:** Silently drops the `email` field from the User response payload.
 - **What it teaches:** API Parity and Contract Testing. In microservice architectures, silently changing JSON structures causes downstream frontend applications to crash with `NullPointerExceptions` or `undefined` errors. You learn how to use Contract Tests (via RestAssured) to catch these in CI/CD before they hit production.
 
+### `10-openapi-contract-drift`: OpenAPI Schema Drift
+
+- **What it does:** Returns `contactEmail` instead of the documented `email` field while still responding with HTTP 200.
+- **What it teaches:** OpenAPI compatibility and schema evolution. You learn why generated clients depend on stable field names, how contract-diff checks catch backward-incompatible changes, and how to migrate fields without breaking consumers.
+
 ### `02-api-latency`: API Degradation (3s Delay)
 
 - **What it does:** Forces the backend to sleep for 3 seconds on every request.

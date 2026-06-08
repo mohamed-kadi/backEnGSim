@@ -7,6 +7,7 @@ This platform is designed to teach backend systems progressively. Do not start b
 Focus scenarios:
 
 - `01-dto-regression`
+- `10-openapi-contract-drift`
 - `02-api-latency`
 - `09-rate-limiting`
 
@@ -14,13 +15,14 @@ What to learn:
 
 - HTTP status codes are not the whole contract.
 - JSON response shape is part of the public API.
+- OpenAPI diffs catch incompatible schema changes before generated clients break.
 - Latency percentiles matter more than averages.
 - Rate limiting is controlled load shedding, not a crash.
 
 Practice output:
 
 - Explain the difference between a 500, a 429, and a 200 response with a broken payload.
-- Write a short incident update using the words "contract", "latency", "throughput", and "backoff".
+- Write a short incident update using the words "contract", "schema drift", "latency", "throughput", and "backoff".
 
 ## Stage 2: Persistence And Caching
 
