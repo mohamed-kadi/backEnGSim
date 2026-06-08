@@ -1,6 +1,7 @@
 package com.backendlab.learning;
 
 import com.backendlab.engine.ScenarioCatalog;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,7 +44,7 @@ public class LearningNoteController {
     @PutMapping("/{scenarioId}")
     public ResponseEntity<LearningNote> save(
             @PathVariable String scenarioId,
-            @RequestBody LearningNoteRequest request
+            @Valid @RequestBody LearningNoteRequest request
     ) {
         if (!scenarioCatalog.exists(scenarioId)) {
             return ResponseEntity.notFound().build();
@@ -51,10 +52,14 @@ public class LearningNoteController {
 
         LearningNote note = learningNoteRepository.findByScenarioId(scenarioId)
                 .orElseGet(() -> new LearningNote(scenarioId, "", false, Instant.now()));
-        note.setNotes(request.notes() != null ? request.notes() : "");
+        note.setNotes(normalizeNotes(request.notes()));
         note.setCompleted(request.completed());
         note.setUpdatedAt(Instant.now());
 
         return ResponseEntity.ok(learningNoteRepository.save(note));
+    }
+
+    private String normalizeNotes(String notes) {
+        return notes != null ? notes.strip() : "";
     }
 }

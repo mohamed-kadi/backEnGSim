@@ -12,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -187,6 +189,34 @@ public class ContractTestSuite {
             .body("scenarioId", equalTo("01-dto-regression"))
             .body("notes", equalTo("DTO regression broke the response contract."))
             .body("completed", equalTo(true));
+    }
+
+    @Test
+    public void testLearningNotes_NormalizesBlankNotes() {
+        given().contentType("application/json")
+            .body("""
+                {
+                  "notes": "   ",
+                  "completed": false
+                }
+                """)
+            .when().put("/api/_learning/notes/01-dto-regression")
+            .then().statusCode(200)
+            .body("scenarioId", equalTo("01-dto-regression"))
+            .body("notes", equalTo(""))
+            .body("completed", equalTo(false));
+    }
+
+    @Test
+    public void testLearningNotes_RejectsOversizedNotes() {
+        String oversizedNotes = "x".repeat(5001);
+
+        given().contentType("application/json")
+            .body(Map.of("notes", oversizedNotes, "completed", false))
+            .when().put("/api/_learning/notes/01-dto-regression")
+            .then().statusCode(400)
+            .body("error", equalTo("validation_failed"))
+            .body("message", equalTo("notes must be 5000 characters or fewer"));
     }
 
     @Test
