@@ -55,6 +55,8 @@ The System view also includes dependency drills for PostgreSQL, Redis, Kafka, an
 
 For latency, downstream, cache-stampede, write-failure, and rate-limit scenarios, the runbook adds resilience exercises about timeout budgets, retry safety, exponential backoff, and load shedding. Exported incident reports include those prompts.
 
+The DDD view introduces domain language, bounded contexts, aggregates, value objects, invariants, domain events, repositories, and anti-corruption layers before the platform expands into payments and notifications.
+
 ## Learning Material
 
 Start with these files:

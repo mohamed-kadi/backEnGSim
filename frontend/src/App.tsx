@@ -31,7 +31,7 @@ type LearningNote = {
   updatedAt: string | null;
 };
 
-type WorkspaceView = 'overview' | 'scenarios' | 'runbook' | 'reports' | 'system';
+type WorkspaceView = 'overview' | 'scenarios' | 'runbook' | 'reports' | 'system' | 'ddd';
 type ScenarioProgressState = 'new' | 'started' | 'completed';
 
 const scenarioIcons: Record<string, string> = {
@@ -51,6 +51,7 @@ const workspaceViews: { id: WorkspaceView, label: string }[] = [
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'runbook', label: 'Runbook' },
   { id: 'system', label: 'System' },
+  { id: 'ddd', label: 'DDD' },
   { id: 'reports', label: 'Reports' },
   { id: 'overview', label: 'Progress' },
 ];
@@ -254,6 +255,8 @@ management.endpoints.web.exposure.include=health,prometheus
                 {systemToolsPanel}
               </>
             )}
+
+            {activeView === 'ddd' && <DddLearningPanel />}
           </div>
         </main>
 
@@ -351,7 +354,7 @@ const WorkspaceSidebar = ({ activeView, onViewChange }: { activeView: WorkspaceV
       <h1 className="text-lg font-bold tracking-tight text-emerald-300">Backend Lab</h1>
       <p className="mt-1 text-xs text-slate-500">Systems learning workspace</p>
     </div>
-    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-1">
+    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-6 lg:grid-cols-1">
       {workspaceViews.map((view) => (
         <button
           key={view.id}
@@ -381,6 +384,7 @@ const WorkspaceHeader = ({ activeScenario, activeView }: { activeScenario: strin
     scenarios: 'Choose a failure to investigate.',
     runbook: 'Explain the failure with evidence.',
     system: 'Inspect logs, configuration, dependencies, and runtime signals.',
+    ddd: 'Practice domain language, invariants, and service boundaries.',
     reports: 'Review saved learner work and export reports.',
     overview: 'Track completion and category coverage.',
   };
@@ -560,6 +564,160 @@ const ScenarioCatalogPanel = ({
     </div>
   );
 };
+
+const dddGlossaryCards = [
+  {
+    term: 'Entity',
+    definition: 'An object with identity that continues over time even when its attributes change.',
+    example: 'A User keeps the same identity after their email changes.',
+    prompt: 'Which field currently acts as identity in the User model?',
+  },
+  {
+    term: 'Value Object',
+    definition: 'An immutable concept defined by its attributes instead of a database identity.',
+    example: 'EmailAddress or Money can be value objects because equality comes from their value.',
+    prompt: 'What validation should an EmailAddress value object protect?',
+  },
+  {
+    term: 'Aggregate',
+    definition: 'A consistency boundary that groups related objects behind one root.',
+    example: 'A Payment aggregate could protect authorization, capture, refund, and status transitions.',
+    prompt: 'Which business rules should only change through the aggregate root?',
+  },
+  {
+    term: 'Invariant',
+    definition: 'A business rule that must always remain true after a command finishes.',
+    example: 'A captured payment cannot exceed the authorized amount.',
+    prompt: 'What invariant should user registration enforce before publishing an event?',
+  },
+  {
+    term: 'Bounded Context',
+    definition: 'A boundary where a model has one precise meaning.',
+    example: 'User in Identity is not the same model as Customer in Ordering.',
+    prompt: 'Where does the current Order Service depend too directly on User language?',
+  },
+  {
+    term: 'Domain Event',
+    definition: 'A business fact named in past tense and useful to other parts of the system.',
+    example: 'UserRegistered is clearer than a technical string like UserCreated: bob.',
+    prompt: 'Which event should be emitted after successful registration?',
+  },
+  {
+    term: 'Repository',
+    definition: 'A collection-like abstraction for loading and saving aggregates.',
+    example: 'UserRepository should not become a place for business decisions.',
+    prompt: 'Which current rules belong in a domain model instead of a repository or controller?',
+  },
+  {
+    term: 'Anti-Corruption Layer',
+    definition: 'A translation boundary that prevents an external model from leaking into your domain.',
+    example: 'A payment provider response should be translated into Payment domain language.',
+    prompt: 'Where will this matter when we add a payment provider simulation?',
+  },
+];
+
+const dddExercises = [
+  {
+    title: 'Model The User Boundary',
+    focus: 'Separate identity/profile language from order and payment language.',
+    tasks: [
+      'Decide whether User is currently an aggregate root or only a persistence entity.',
+      'Name one invariant registration should protect.',
+      'Rename UserCreated into a business event in past-tense domain language.',
+    ],
+  },
+  {
+    title: 'Find Bounded Context Leakage',
+    focus: 'Prevent one service model from becoming everybody else\'s model.',
+    tasks: [
+      'Compare User, Order, Payment, and Notification vocabulary.',
+      'Identify data each context should own.',
+      'Name the translation needed between User registration and welcome-order creation.',
+    ],
+  },
+  {
+    title: 'Prepare Payment Language',
+    focus: 'Use DDD before adding payment code.',
+    tasks: [
+      'Define PaymentIntent, PaymentAttempt, Authorization, Capture, Refund, and LedgerEntry.',
+      'Choose which object protects idempotency.',
+      'Write one invariant that prevents duplicate capture.',
+    ],
+  },
+];
+
+const dddContextMap = [
+  { name: 'Identity', owns: 'User registration, profile, credentials', event: 'UserRegistered' },
+  { name: 'Ordering', owns: 'Order lifecycle and welcome-order workflow', event: 'OrderCreated' },
+  { name: 'Payments', owns: 'Authorization, capture, refunds, ledger', event: 'PaymentCaptured' },
+  { name: 'Notifications', owns: 'Message templates, delivery attempts, provider status', event: 'NotificationSent' },
+];
+
+const DddLearningPanel = () => (
+  <div className="space-y-6">
+    <section className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-lg">
+      <div className="mb-4 border-b border-slate-700 pb-3">
+        <h3 className="text-lg font-semibold text-slate-200">DDD Learning Track</h3>
+        <p className="mt-1 text-sm text-slate-400">Use domain language to decide where behavior belongs before adding more services.</p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
+        {dddContextMap.map((context) => (
+          <article key={context.name} className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">{context.name}</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">{context.owns}</p>
+            <p className="mt-3 rounded border border-slate-700 bg-slate-950/70 px-2 py-1 text-xs font-semibold text-slate-400">{context.event}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-lg">
+      <div className="mb-4 border-b border-slate-700 pb-3">
+        <h3 className="text-lg font-semibold text-slate-200">Glossary Cards</h3>
+        <p className="mt-1 text-sm text-slate-400">Each card links a DDD term to this project so the vocabulary stays concrete.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {dddGlossaryCards.map((card) => (
+          <article key={card.term} className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+            <h4 className="text-sm font-semibold text-blue-200">{card.term}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">{card.definition}</p>
+            <div className="mt-3 rounded border border-blue-900/50 bg-blue-950/20 p-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-300">Project Example</p>
+              <p className="mt-1 text-sm text-slate-300">{card.example}</p>
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">{card.prompt}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section className="rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-lg">
+      <div className="mb-4 border-b border-slate-700 pb-3">
+        <h3 className="text-lg font-semibold text-slate-200">Modeling Exercises</h3>
+        <p className="mt-1 text-sm text-slate-400">Answer these before changing code. DDD starts with language and rules.</p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {dddExercises.map((exercise) => (
+          <article key={exercise.title} className="rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+            <h4 className="text-sm font-semibold text-slate-100">{exercise.title}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">{exercise.focus}</p>
+            <ol className="mt-4 space-y-2 text-sm text-slate-300">
+              {exercise.tasks.map((task, index) => (
+                <li key={task} className="flex gap-2">
+                  <span className="font-mono text-slate-500">{index + 1}.</span>
+                  <span>{task}</span>
+                </li>
+              ))}
+            </ol>
+          </article>
+        ))}
+      </div>
+    </section>
+  </div>
+);
 
 const ConfigurationPanel = ({ editorContent, onEditorChange }: { editorContent: string, onEditorChange: (value: string) => void }) => (
   <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-lg">

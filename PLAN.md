@@ -509,14 +509,14 @@ git commit -m "feat: add openapi contract drift scenario"
 
 ### 5. DDD Learning Track
 
-Status: planned
+Status: in progress
 
 Goal: teach DDD concepts through the same scenario/runbook model.
 
 Tasks:
 
-- [ ] Add DDD glossary cards to the dashboard.
-- [ ] Add exercises for aggregates, value objects, invariants, and bounded contexts.
+- [x] Add DDD glossary cards to the dashboard.
+- [x] Add exercises for aggregates, value objects, invariants, and bounded contexts.
 - [ ] Add one scenario for bounded-context leakage.
 - [ ] Add one scenario for business invariant breach.
 

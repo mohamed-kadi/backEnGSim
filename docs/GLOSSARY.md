@@ -16,9 +16,29 @@ A DDD boundary where a model has a specific meaning. `User` in an identity conte
 
 The entity that protects a group of related business rules. Other objects inside the aggregate should be changed through the root so invariants stay valid.
 
+## Entity
+
+An object with a stable identity over time. Its fields can change, but it remains the same conceptual thing. A `User` can change email while still being the same user.
+
+## Value Object
+
+An immutable object defined by its values instead of an identity. `EmailAddress`, `Money`, and `PaymentAmount` are good candidates because validation and equality depend on the contained values.
+
+## Invariant
+
+A business rule that must always remain true after a command completes. Example: a payment capture cannot exceed the authorized amount.
+
 ## Domain Event
 
 A fact that happened in the business domain, named in business language. Example: `UserRegistered`. It is stronger than a technical message like `UserCreated: bob`.
+
+## Repository
+
+A collection-like abstraction for loading and saving aggregates. A repository should not become a dumping ground for business rules.
+
+## Anti-Corruption Layer
+
+A translation boundary that prevents another system's model from leaking into your domain model. Payment provider responses should be translated into internal payment language before the rest of the system sees them.
 
 ## Circuit Breaker
 
